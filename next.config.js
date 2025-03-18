@@ -19,6 +19,18 @@ const nextConfig = {
       },
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/projects/:path*",
+        destination: "http://localhost:8000/projects/:path*",
+      },
+      {
+        source: "/api/me/:path*",
+        destination: "http://localhost:8000/me/:path*",
+      },
+    ];
+  },
 };
 
 module.exports = nextConfig;

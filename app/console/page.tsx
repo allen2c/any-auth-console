@@ -1,14 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import { useSession, signOut } from "next-auth/react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import Image from "next/image";
+import Link from "next/link";
+import LogoutButton from "../components/LogoutButton";
+import ProjectSwitcher from "../components/ProjectSwitcher";
+import { Project, fetchProjectById } from "../services/projects";
 
 export default function Console() {
-  const [activeTab, setActiveTab] = useState("dashboard");
+  const [activeTab, setActiveTab] = useState("services");
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
   const { data: session } = useSession();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectId = searchParams.get("project_id");
+
+  useEffect(() => {
+    async function loadProject() {
+      if (!projectId) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        const project = await fetchProjectById(projectId);
+        setCurrentProject(project);
+      } catch (err) {
+        console.error("Failed to load project:", err);
+        setError("Failed to load project. Please try again.");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadProject();
+  }, [projectId]);
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -16,24 +51,17 @@ export default function Console() {
       <nav className="bg-white shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex">
+            <div className="flex items-center">
               <div className="flex-shrink-0 flex items-center">
-                <Link href="/" className="text-xl font-bold text-blue-600">
+                <Link href="/" className="text-xl font-bold text-blue-600 mr-6">
                   AnyAuth Console
                 </Link>
-              </div>
-              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-                <a
-                  href="#"
-                  className="border-blue-500 text-gray-900 inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium"
-                >
-                  Console
-                </a>
+                <ProjectSwitcher currentProjectId={projectId || undefined} />
               </div>
             </div>
             <div className="flex items-center space-x-4">
               {session?.user?.name && (
-                <span className="text-sm font-medium text-gray-700">
+                <span className="text-sm font-medium text-gray-700 hidden md:block">
                   {session.user.name}
                 </span>
               )}
@@ -60,7 +88,7 @@ export default function Console() {
                   </span>
                 </button>
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 z-10">
                     <div className="py-1">
                       {session?.user?.email && (
                         <div className="block px-4 py-2 text-sm text-gray-500 border-b">
@@ -77,12 +105,7 @@ export default function Console() {
                       >
                         Account settings
                       </a>
-                      <button
-                        onClick={() => signOut({ callbackUrl: "/" })}
-                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                      >
-                        Sign out
-                      </button>
+                      <LogoutButton className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" />
                     </div>
                   </div>
                 )}
@@ -94,441 +117,264 @@ export default function Console() {
 
       <div className="py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl font-semibold text-gray-900">Dashboard</h1>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Tabs */}
-          <div className="mt-4 border-b border-gray-200">
-            <div className="-mb-px flex space-x-8">
-              <button
-                onClick={() => setActiveTab("dashboard")}
-                className={`${
-                  activeTab === "dashboard"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-              >
-                Dashboard
-              </button>
-              <button
-                onClick={() => setActiveTab("projects")}
-                className={`${
-                  activeTab === "projects"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-              >
-                Projects
-              </button>
-              <button
-                onClick={() => setActiveTab("services")}
-                className={`${
-                  activeTab === "services"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-              >
-                Services
-              </button>
-              <button
-                onClick={() => setActiveTab("settings")}
-                className={`${
-                  activeTab === "settings"
-                    ? "border-blue-500 text-blue-600"
-                    : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
-              >
-                Settings
-              </button>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-64">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             </div>
-          </div>
-
-          {/* Main content based on selected tab */}
-          <div className="mt-6">
-            {activeTab === "dashboard" && (
-              <div>
-                <div className="bg-white shadow overflow-hidden sm:rounded-lg mb-6">
-                  <div className="px-4 py-5 sm:px-6">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Welcome to AnyAuth Console
-                    </h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                      Your cloud infrastructure management dashboard
-                    </p>
-                  </div>
-                  <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                    <p className="text-gray-700">
-                      Get started by creating a new project or exploring the
-                      available services.
-                    </p>
-                    <div className="mt-4">
-                      <button
-                        onClick={() => setActiveTab("projects")}
-                        className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        Create new project
-                      </button>
-                    </div>
-                  </div>
+          ) : error ? (
+            <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
                 </div>
-
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {/* Resource Usage Card */}
-                  <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-blue-500 rounded-md p-3">
-                          <svg
-                            className="h-6 w-6 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M13 10V3L4 14h7v7l9-11h-7z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">
-                              Resource Usage
-                            </dt>
-                            <dd>
-                              <div className="text-lg font-medium text-gray-900">
-                                12%
-                              </div>
-                            </dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 px-5 py-3">
-                      <div className="text-sm">
-                        <a
-                          href="#"
-                          className="font-medium text-blue-600 hover:text-blue-500"
-                        >
-                          View all
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Active Services Card */}
-                  <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-green-500 rounded-md p-3">
-                          <svg
-                            className="h-6 w-6 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">
-                              Active Services
-                            </dt>
-                            <dd>
-                              <div className="text-lg font-medium text-gray-900">
-                                3
-                              </div>
-                            </dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 px-5 py-3">
-                      <div className="text-sm">
-                        <a
-                          href="#"
-                          className="font-medium text-blue-600 hover:text-blue-500"
-                        >
-                          View all
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Billing Card */}
-                  <div className="bg-white overflow-hidden shadow rounded-lg">
-                    <div className="p-5">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 bg-yellow-500 rounded-md p-3">
-                          <svg
-                            className="h-6 w-6 text-white"
-                            xmlns="http://www.w3.org/2000/svg"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="currentColor"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <div className="ml-5 w-0 flex-1">
-                          <dl>
-                            <dt className="text-sm font-medium text-gray-500 truncate">
-                              Current Billing
-                            </dt>
-                            <dd>
-                              <div className="text-lg font-medium text-gray-900">
-                                $0.00
-                              </div>
-                            </dd>
-                          </dl>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="bg-gray-50 px-5 py-3">
-                      <div className="text-sm">
-                        <a
-                          href="#"
-                          className="font-medium text-blue-600 hover:text-blue-500"
-                        >
-                          View details
-                        </a>
-                      </div>
-                    </div>
-                  </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
               </div>
-            )}
+            </div>
+          ) : !projectId ? (
+            <div className="text-center py-12 bg-white shadow rounded-lg">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No project selected
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Select an existing project or create a new one.
+              </p>
+              <div className="mt-6">
+                <Link
+                  href="/console/new-project"
+                  className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >
+                  <svg
+                    className="-ml-1 mr-2 h-5 w-5"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  New Project
+                </Link>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="mb-6">
+                <h1 className="text-2xl font-semibold text-gray-900">
+                  {currentProject?.full_name ||
+                    currentProject?.name ||
+                    "Project Overview"}
+                </h1>
+                <p className="text-sm text-gray-500">
+                  Project ID: {currentProject?.id}
+                </p>
+              </div>
 
-            {activeTab === "projects" && (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg leading-6 font-medium text-gray-900">
-                      Your Projects
-                    </h3>
-                    <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                      Manage your cloud projects
-                    </p>
-                  </div>
-                  <button className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    New Project
+              {/* Tabs */}
+              <div className="border-b border-gray-200">
+                <div className="-mb-px flex space-x-8">
+                  <button
+                    onClick={() => setActiveTab("services")}
+                    className={`${
+                      activeTab === "services"
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  >
+                    Services
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("settings")}
+                    className={`${
+                      activeTab === "settings"
+                        ? "border-blue-500 text-blue-600"
+                        : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm`}
+                  >
+                    Settings
                   </button>
                 </div>
-                <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                  <div className="text-center py-12">
-                    <svg
-                      className="mx-auto h-12 w-12 text-gray-400"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-                      />
-                    </svg>
-                    <h3 className="mt-2 text-sm font-medium text-gray-900">
-                      No projects
-                    </h3>
-                    <p className="mt-1 text-sm text-gray-500">
-                      Get started by creating a new project.
-                    </p>
-                    <div className="mt-6">
-                      <button
-                        type="button"
-                        className="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                      >
-                        <svg
-                          className="-ml-1 mr-2 h-5 w-5"
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 20 20"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                        New Project
-                      </button>
-                    </div>
-                  </div>
-                </div>
               </div>
-            )}
 
-            {activeTab === "services" && (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Available Services
-                  </h3>
-                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                    Choose from our range of cloud services
-                  </p>
-                </div>
-                <div className="border-t border-gray-200">
-                  <dl>
-                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Compute Engine
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Virtual machines running in our global data centers
-                      </dd>
-                    </div>
-                    <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Cloud Storage
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Durable and highly available object storage
-                      </dd>
-                    </div>
-                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Database Services
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Fully managed relational and non-relational databases
-                      </dd>
-                    </div>
-                    <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Identity & Security
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Authentication, authorization, and identity services
-                      </dd>
-                    </div>
-                    <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                      <dt className="text-sm font-medium text-gray-500">
-                        Network Services
-                      </dt>
-                      <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                        Virtual networking, load balancing, and DNS services
-                      </dd>
-                    </div>
-                  </dl>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "settings" && (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">
-                    Account Settings
-                  </h3>
-                  <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                    Manage your account preferences and settings
-                  </p>
-                </div>
-                <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
-                  <div className="space-y-6">
-                    <div>
+              {/* Main content based on selected tab */}
+              <div className="mt-6">
+                {activeTab === "services" && (
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <div className="px-4 py-5 sm:px-6">
                       <h3 className="text-lg leading-6 font-medium text-gray-900">
-                        Profile
+                        Available Services
                       </h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Update your personal information.
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                        Choose from our range of cloud services
                       </p>
-                      <div className="mt-4 grid grid-cols-1 gap-y-6 gap-x-4 sm:grid-cols-6">
-                        <div className="sm:col-span-3">
-                          <label
-                            htmlFor="first-name"
-                            className="block text-sm font-medium text-gray-700"
-                          >
-                            First name
-                          </label>
-                          <div className="mt-1">
-                            <input
-                              type="text"
-                              name="first-name"
-                              id="first-name"
-                              className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                              placeholder="John"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="sm:col-span-3">
-                          <label
-                            htmlFor="last-name"
-                            className="block text-sm font-medium text-gray-700"
-                          >
-                            Last name
-                          </label>
-                          <div className="mt-1">
-                            <input
-                              type="text"
-                              name="last-name"
-                              id="last-name"
-                              className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                              placeholder="Doe"
-                            />
-                          </div>
-                        </div>
-
-                        <div className="sm:col-span-4">
-                          <label
-                            htmlFor="email"
-                            className="block text-sm font-medium text-gray-700"
-                          >
-                            Email address
-                          </label>
-                          <div className="mt-1">
-                            <input
-                              id="email"
-                              name="email"
-                              type="email"
-                              className="shadow-sm focus:ring-blue-500 focus:border-blue-500 block w-full sm:text-sm border-gray-300 rounded-md"
-                              placeholder="john.doe@example.com"
-                            />
-                          </div>
-                        </div>
-                      </div>
                     </div>
-
-                    <div className="pt-5">
-                      <div className="flex justify-end">
-                        <button
-                          type="button"
-                          className="bg-white py-2 px-4 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="submit"
-                          className="ml-3 inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                        >
-                          Save
-                        </button>
-                      </div>
+                    <div className="border-t border-gray-200">
+                      <dl>
+                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Compute Engine
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            Virtual machines running in our global data centers
+                          </dd>
+                        </div>
+                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Cloud Storage
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            Durable and highly available object storage
+                          </dd>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Database Services
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            Fully managed relational and non-relational
+                            databases
+                          </dd>
+                        </div>
+                        <div className="bg-white px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Identity & Security
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            Authentication, authorization, and identity services
+                          </dd>
+                        </div>
+                        <div className="bg-gray-50 px-4 py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Network Services
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
+                            Virtual networking, load balancing, and DNS services
+                          </dd>
+                        </div>
+                      </dl>
                     </div>
                   </div>
-                </div>
+                )}
+
+                {activeTab === "settings" && (
+                  <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                    <div className="px-4 py-5 sm:px-6">
+                      <h3 className="text-lg leading-6 font-medium text-gray-900">
+                        Project Settings
+                      </h3>
+                      <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                        Manage project details and configuration
+                      </p>
+                    </div>
+                    <div className="border-t border-gray-200 px-4 py-5 sm:p-6">
+                      <dl className="grid grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2">
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Project ID
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.id}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Project Name
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.name}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Full Name
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.full_name || "—"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Created By
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.created_by}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Created At
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.created_at
+                              ? new Date(
+                                  currentProject.created_at * 1000
+                                ).toLocaleString()
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-1">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Updated At
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.updated_at
+                              ? new Date(
+                                  currentProject.updated_at * 1000
+                                ).toLocaleString()
+                              : "—"}
+                          </dd>
+                        </div>
+                        <div className="sm:col-span-2">
+                          <dt className="text-sm font-medium text-gray-500">
+                            Status
+                          </dt>
+                          <dd className="mt-1 text-sm text-gray-900">
+                            {currentProject?.disabled ? (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                Disabled
+                              </span>
+                            ) : (
+                              <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                Active
+                              </span>
+                            )}
+                          </dd>
+                        </div>
+                      </dl>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            </>
+          )}
         </div>
       </div>
     </div>

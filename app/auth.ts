@@ -2,8 +2,7 @@
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
-import { checkUserExists, createUser } from "./services/api";
-import { fetchJwtToken } from "./services/auth"; // New import
+import { fetchJwtToken, refreshJwtToken } from "./services/auth"; // Updated import
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -18,29 +17,23 @@ export const authConfig: NextAuthConfig = {
   },
   callbacks: {
     async signIn({ user, account }) {
-      // Only run this check for Google provider
+      // Only run this for Google provider
       if (account?.provider === "google" && user.email) {
         try {
-          // Check if user exists in your backend
-          const exists = await checkUserExists(user.email);
+          // Call the token endpoint directly, which handles user existence/creation
+          await fetchJwtToken({
+            provider: "google",
+            email: user.email,
+            name: user.name || "",
+            picture: user.image || "",
+            googleId: account.providerAccountId,
+          });
 
-          if (!exists) {
-            // User doesn't exist, create a new user
-            try {
-              await createUser(user.email, user.name, user.image);
-              console.log(`Created new user for: ${user.email}`);
-            } catch (error) {
-              console.error("Error creating user:", error);
-              return false; // Deny sign in if user creation fails
-            }
-          }
-
-          // User exists, allow sign in
+          // If we get here, the token was successfully obtained
           return true;
         } catch (error) {
-          console.error("Error during user existence check:", error);
-          // Handle error case (could return false to deny sign in)
-          return false;
+          console.error("Error obtaining token from backend:", error);
+          return false; // Deny sign in if token fetch fails
         }
       }
 
@@ -91,8 +84,28 @@ export const authConfig: NextAuthConfig = {
         return token;
       }
 
-      // Access token has expired, try to refresh it (requires additional implementation)
-      // This is where you would use the refresh token to get a new access token
+      // Access token has expired, try to refresh it
+      if (token.refreshToken) {
+        try {
+          const refreshedTokens = await refreshJwtToken(
+            token.refreshToken as string
+          );
+
+          return {
+            ...token,
+            accessToken: refreshedTokens.access_token,
+            refreshToken: refreshedTokens.refresh_token,
+            accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+          };
+        } catch (error) {
+          console.error("Error refreshing token:", error);
+          // Return token without refresh - user will need to sign in again
+          return {
+            ...token,
+            error: "RefreshAccessTokenError",
+          };
+        }
+      }
 
       return token;
     },

@@ -23,8 +23,13 @@ export default function Login() {
       const tokenResponse = await loginWithCredentials(
         emailOrUsername,
         password
-      );
+      ).catch((error) => {
+        console.error("API login error:", error);
+        // Explicitly throw to be caught by the outer try-catch
+        throw error;
+      });
 
+      // If we get here, we have a valid token response
       // Use next-auth's signIn with credentials to establish a session
       const result = await signIn("credentials", {
         redirect: false,
@@ -42,12 +47,16 @@ export default function Login() {
       router.push("/console");
     } catch (error) {
       console.error("Login failed:", error);
-      // Display a more user-friendly error message
+
+      // Display user-friendly error message
       if (error instanceof Error) {
-        setError(error.message);
+        setError(
+          error.message || "Login failed. Please check your credentials."
+        );
       } else {
-        setError("Invalid username or password. Please try again.");
+        setError("An unexpected error occurred. Please try again.");
       }
+
       setIsLoading(false);
     }
   };
@@ -142,7 +151,23 @@ export default function Login() {
             </div>
 
             {error && (
-              <div className="text-red-600 text-sm text-center">{error}</div>
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md text-red-600 text-sm">
+                <div className="flex items-center">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="h-5 w-5 mr-2 text-red-500"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                  {error}
+                </div>
+              </div>
             )}
 
             <div>

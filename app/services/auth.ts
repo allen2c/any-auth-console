@@ -99,38 +99,44 @@ export async function loginWithCredentials(
 
     // Handle authentication errors properly
     if (!response.ok) {
-      // Try to get the detailed error message from the response
-      let errorMessage = "Authentication failed";
-      try {
-        const errorData = await response.json();
-        errorMessage = errorData.detail || errorMessage;
-      } catch {
-        // If we can't parse the JSON, try to get the text content
-        try {
-          errorMessage = await response.text();
-        } catch {
-          // If all else fails, use the status text
-          errorMessage = response.statusText || errorMessage;
-        }
-      }
+      console.error(`Login failed with status: ${response.status}`);
 
-      // Create a specific error for 401 Unauthorized
+      // Handle 401 Unauthorized separately
       if (response.status === 401) {
         throw new Error("Invalid username or password");
       }
 
-      // Handle other error statuses
-      throw new Error(errorMessage);
+      // Try to get error details from response
+      try {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Authentication failed");
+      } catch {
+        // If JSON parsing fails, try text
+        try {
+          const errorText = await response.text();
+          throw new Error(errorText || `Server returned ${response.status}`);
+        } catch {
+          // If all else fails
+          throw new Error(
+            `Authentication failed with status ${response.status}`
+          );
+        }
+      }
     }
 
     return await response.json();
   } catch (error) {
+    // Improve error logging with more details
     console.error("Login error:", error);
-    // Re-throw with a clear message
-    if (error instanceof Error) {
-      throw error; // Keep the original error message
-    } else {
-      throw new Error("Failed to connect to authentication server");
+
+    // Check if it's a network error (Failed to fetch)
+    if (error instanceof TypeError && error.message.includes("fetch")) {
+      throw new Error(
+        "Cannot connect to authentication server. Please check if the server is running at http://localhost:8000"
+      );
     }
+
+    // Just re-throw the error so we can handle it in the component
+    throw error;
   }
 }

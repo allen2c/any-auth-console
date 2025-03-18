@@ -1,4 +1,6 @@
+// types/next-auth.d.ts
 import { DefaultSession } from "next-auth";
+import { JWT } from "next-auth/jwt";
 
 declare module "next-auth" {
   /**
@@ -9,7 +11,25 @@ declare module "next-auth" {
       /** The user's ID */
       id?: string;
     } & DefaultSession["user"];
-    /** The user's access token */
+    /** The user's JWT access token */
     accessToken?: string;
+    /** The user's JWT refresh token */
+    refreshToken?: string;
+    /** Expiration time for the access token */
+    accessTokenExpires?: number;
+  }
+}
+
+declare module "next-auth/jwt" {
+  /** Returned by the `jwt` callback and `getToken`, when using JWT sessions */
+  interface JWT {
+    /** The user's ID */
+    id?: string;
+    /** The user's JWT access token */
+    accessToken?: string;
+    /** The user's JWT refresh token */
+    refreshToken?: string;
+    /** Expiration time for the access token */
+    accessTokenExpires?: number;
   }
 }

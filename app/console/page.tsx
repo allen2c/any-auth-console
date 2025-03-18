@@ -2,10 +2,13 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useSession, signOut } from "next-auth/react";
 import Image from "next/image";
 
 export default function Console() {
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const { data: session } = useSession();
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -28,18 +31,61 @@ export default function Console() {
                 </a>
               </div>
             </div>
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <span className="relative inline-block">
-                  <Image
-                    className="h-8 w-8 rounded-full"
-                    src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                    alt=""
-                    width={32}
-                    height={32}
-                  />
-                  <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-2 ring-white"></span>
+            <div className="flex items-center space-x-4">
+              {session?.user?.name && (
+                <span className="text-sm font-medium text-gray-700">
+                  {session.user.name}
                 </span>
+              )}
+              <div className="relative">
+                <button
+                  className="flex items-center focus:outline-none"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
+                >
+                  <span className="relative inline-block">
+                    {session?.user?.image ? (
+                      <Image
+                        className="h-8 w-8 rounded-full"
+                        src={session.user.image}
+                        alt={session.user.name || "User profile"}
+                        width={32}
+                        height={32}
+                      />
+                    ) : (
+                      <div className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
+                        {session?.user?.name?.charAt(0) || "U"}
+                      </div>
+                    )}
+                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-green-400 ring-2 ring-white"></span>
+                  </span>
+                </button>
+                {showUserMenu && (
+                  <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5">
+                    <div className="py-1">
+                      {session?.user?.email && (
+                        <div className="block px-4 py-2 text-sm text-gray-500 border-b">
+                          {session.user.email}
+                        </div>
+                      )}
+                      <a
+                        href="#"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => {
+                          setActiveTab("settings");
+                          setShowUserMenu(false);
+                        }}
+                      >
+                        Account settings
+                      </a>
+                      <button
+                        onClick={() => signOut({ callbackUrl: "/" })}
+                        className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

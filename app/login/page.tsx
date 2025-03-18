@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { signIn } from "next-auth/react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -14,12 +15,22 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    // This is where you would handle authentication
-    // For now, we'll just simulate a login and redirect
+    // You would implement your own email/password auth here
+    // For now, just show loading and redirect after a delay
     setTimeout(() => {
       setIsLoading(false);
       router.push("/console");
     }, 1000);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setIsLoading(true);
+    try {
+      await signIn("google", { callbackUrl: "/console" });
+    } catch (error) {
+      console.error("Login failed:", error);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -126,8 +137,9 @@ export default function Login() {
 
             <div className="mt-6 grid grid-cols-3 gap-3">
               <div>
-                <a
-                  href="#"
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
                   className="w-full inline-flex justify-center py-2 px-4 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-500 hover:bg-gray-50"
                 >
                   <span className="sr-only">Sign in with Google</span>
@@ -153,7 +165,7 @@ export default function Login() {
                       fill="#EA4335"
                     />
                   </svg>
-                </a>
+                </button>
               </div>
 
               <div>

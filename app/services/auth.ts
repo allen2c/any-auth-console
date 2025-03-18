@@ -86,15 +86,13 @@ export async function loginWithCredentials(
   password: string
 ): Promise<JwtTokenResponse> {
   try {
-    const response = await fetch("http://localhost:8000/login", {
+    const formData = new FormData();
+    formData.append("username", username);
+    formData.append("password", password);
+
+    const response = await fetch("/api/auth/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams({
-        username,
-        password,
-      }),
+      body: formData,
     });
 
     // Handle authentication errors properly
@@ -107,36 +105,14 @@ export async function loginWithCredentials(
       }
 
       // Try to get error details from response
-      try {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Authentication failed");
-      } catch {
-        // If JSON parsing fails, try text
-        try {
-          const errorText = await response.text();
-          throw new Error(errorText || `Server returned ${response.status}`);
-        } catch {
-          // If all else fails
-          throw new Error(
-            `Authentication failed with status ${response.status}`
-          );
-        }
-      }
+      const errorData = await response.json();
+      throw new Error(errorData.error || "Authentication failed");
     }
 
     return await response.json();
   } catch (error) {
-    // Improve error logging with more details
     console.error("Login error:", error);
-
-    // Check if it's a network error (Failed to fetch)
-    if (error instanceof TypeError && error.message.includes("fetch")) {
-      throw new Error(
-        "Cannot connect to authentication server. Please check if the server is running at http://localhost:8000"
-      );
-    }
-
-    // Just re-throw the error so we can handle it in the component
+    // Re-throw for component handling
     throw error;
   }
 }

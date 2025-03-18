@@ -13,9 +13,9 @@ export function createJwtToken(
     nonce: crypto.randomUUID(),
   };
 
-  const secret = process.env.JWT_SECRET_KEY;
+  const secret = process.env.NEXTAUTH_SECRET;
   if (!secret) {
-    throw new Error("JWT_SECRET_KEY is not defined in environment variables");
+    throw new Error("NEXTAUTH_SECRET is not defined in environment variables");
   }
 
   return jwt.sign(payload, secret, { algorithm: "HS256" });

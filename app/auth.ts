@@ -1,6 +1,8 @@
 // app/auth.ts
+
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
+import CredentialsProvider from "next-auth/providers/credentials";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth"; // Updated import
 
@@ -9,6 +11,26 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+    }),
+    CredentialsProvider({
+      id: "credentials",
+      name: "Credentials",
+      credentials: {
+        accessToken: { label: "Access Token", type: "text" },
+        refreshToken: { label: "Refresh Token", type: "text" },
+        accessTokenExpires: { label: "Token Expiry", type: "text" },
+      },
+      async authorize(credentials) {
+        if (!credentials?.accessToken) return null;
+
+        // Return the credentials directly to be stored in the JWT
+        return {
+          id: "user-id", // Will be updated in the jwt callback
+          accessToken: credentials.accessToken,
+          refreshToken: credentials.refreshToken,
+          accessTokenExpires: credentials.accessTokenExpires,
+        };
+      },
     }),
   ],
   pages: {

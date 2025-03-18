@@ -77,3 +77,60 @@ export async function refreshJwtToken(
     throw error;
   }
 }
+
+/**
+ * Login with email/username and password
+ */
+export async function loginWithCredentials(
+  username: string,
+  password: string
+): Promise<JwtTokenResponse> {
+  try {
+    const response = await fetch("http://localhost:8000/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams({
+        username,
+        password,
+      }),
+    });
+
+    // Handle authentication errors properly
+    if (!response.ok) {
+      // Try to get the detailed error message from the response
+      let errorMessage = "Authentication failed";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorMessage;
+      } catch {
+        // If we can't parse the JSON, try to get the text content
+        try {
+          errorMessage = await response.text();
+        } catch {
+          // If all else fails, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+      }
+
+      // Create a specific error for 401 Unauthorized
+      if (response.status === 401) {
+        throw new Error("Invalid username or password");
+      }
+
+      // Handle other error statuses
+      throw new Error(errorMessage);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("Login error:", error);
+    // Re-throw with a clear message
+    if (error instanceof Error) {
+      throw error; // Keep the original error message
+    } else {
+      throw new Error("Failed to connect to authentication server");
+    }
+  }
+}

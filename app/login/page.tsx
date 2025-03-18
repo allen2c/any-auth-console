@@ -4,23 +4,52 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { signIn } from "next-auth/react";
+import { loginWithCredentials } from "../services/auth";
 
 export default function Login() {
-  const [email, setEmail] = useState("");
+  const [emailOrUsername, setEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
-    // You would implement your own email/password auth here
-    // For now, just show loading and redirect after a delay
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      // Call the backend login API with email/username and password
+      const tokenResponse = await loginWithCredentials(
+        emailOrUsername,
+        password
+      );
+
+      // Use next-auth's signIn with credentials to establish a session
+      const result = await signIn("credentials", {
+        redirect: false,
+        accessToken: tokenResponse.access_token,
+        refreshToken: tokenResponse.refresh_token,
+        accessTokenExpires: Date.now() + tokenResponse.expires_in * 1000,
+        callbackUrl: "/console",
+      });
+
+      if (result?.error) {
+        throw new Error(result.error);
+      }
+
+      // Redirect to console
       router.push("/console");
-    }, 1000);
+    } catch (error) {
+      console.error("Login failed:", error);
+      // Display a more user-friendly error message
+      if (error instanceof Error) {
+        setError(error.message);
+      } else {
+        setError("Invalid username or password. Please try again.");
+      }
+      setIsLoading(false);
+    }
   };
 
   const handleGoogleSignIn = async () => {
@@ -46,20 +75,20 @@ export default function Login() {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label
-                htmlFor="email"
+                htmlFor="emailOrUsername"
                 className="block text-sm font-medium text-gray-700"
               >
-                Email address
+                Email address or username
               </label>
               <div className="mt-1">
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
+                  id="emailOrUsername"
+                  name="emailOrUsername"
+                  type="text"
+                  autoComplete="username"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                 />
               </div>
@@ -111,6 +140,10 @@ export default function Login() {
                 </a>
               </div>
             </div>
+
+            {error && (
+              <div className="text-red-600 text-sm text-center">{error}</div>
+            )}
 
             <div>
               <button

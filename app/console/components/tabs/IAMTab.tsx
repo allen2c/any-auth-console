@@ -12,10 +12,126 @@ interface MemberWithUserInfo extends ProjectMember {
   roles?: Role[];
 }
 
+interface EditRolesPanelProps {
+  isOpen: boolean;
+  onClose: () => void;
+  member: MemberWithUserInfo | null;
+  availableRoles: Role[];
+  onUpdate: (memberId: string, roleIds: string[]) => void;
+}
+
+function EditRolesPanel({
+  isOpen,
+  onClose,
+  member,
+  availableRoles,
+  onUpdate,
+}: EditRolesPanelProps) {
+  if (!isOpen || !member) return null;
+
+  return (
+    <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out">
+      <div className="h-full flex flex-col">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Edit Roles</h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-500"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-6">
+          <div className="mb-4">
+            <p className="text-sm text-gray-500">User</p>
+            <p className="text-sm font-medium text-gray-900">
+              {member.userDetails?.full_name ||
+                member.userDetails?.username ||
+                "Unknown User"}
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <p className="text-sm font-medium text-gray-900">Roles</p>
+            <div className="space-y-2">
+              {availableRoles.map((role) => (
+                <label key={role.id} className="flex items-center space-x-3">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    checked={member.roles?.some((r) => r.id === role.id)}
+                  />
+                  <span className="text-sm text-gray-700">{role.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
+          <div className="flex justify-end space-x-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => onUpdate(member.id, [])}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+            >
+              Update
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function IAMTab({ projectId }: IAMTabProps) {
   const [members, setMembers] = useState<MemberWithUserInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
+  const [editingMember, setEditingMember] = useState<MemberWithUserInfo | null>(
+    null
+  );
+  const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const response = await fetch(`/api/projects/${projectId}/roles`);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch roles: ${response.status}`);
+        }
+        const data: Page<Role> = await response.json();
+        setAvailableRoles(data.data);
+      } catch (err) {
+        console.error("Error fetching roles:", err);
+      }
+    };
+
+    if (projectId) {
+      fetchRoles();
+    }
+  }, [projectId]);
 
   useEffect(() => {
     const fetchMembers = async () => {
@@ -73,6 +189,22 @@ export default function IAMTab({ projectId }: IAMTabProps) {
       fetchMembers();
     }
   }, [projectId]);
+
+  const handleEditClick = (member: MemberWithUserInfo) => {
+    setEditingMember(member);
+    setIsEditPanelOpen(true);
+  };
+
+  const handleCloseEditPanel = () => {
+    setIsEditPanelOpen(false);
+    setEditingMember(null);
+  };
+
+  const handleUpdateRoles = (memberId: string, roleIds: string[]) => {
+    // TODO: Implement role update logic
+    console.log("Updating roles for member:", memberId, "with roles:", roleIds);
+    handleCloseEditPanel();
+  };
 
   return (
     <div className="space-y-6">
@@ -165,6 +297,7 @@ export default function IAMTab({ projectId }: IAMTabProps) {
                         type="button"
                         className="text-blue-600 hover:text-blue-900"
                         title="Edit roles"
+                        onClick={() => handleEditClick(member)}
                       >
                         <svg
                           xmlns="http://www.w3.org/2000/svg"
@@ -183,6 +316,14 @@ export default function IAMTab({ projectId }: IAMTabProps) {
           </div>
         )}
       </div>
+
+      <EditRolesPanel
+        isOpen={isEditPanelOpen}
+        onClose={handleCloseEditPanel}
+        member={editingMember}
+        availableRoles={availableRoles}
+        onUpdate={handleUpdateRoles}
+      />
     </div>
   );
 }

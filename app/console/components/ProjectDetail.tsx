@@ -84,8 +84,9 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Tab content */}
       <div className="mt-6">
         {activeTab === "services" && <ServicesTab />}
-        {activeTab === "members" && <MembersTab projectId={project.id} />}{" "}
-        {/* Add the MembersTab component */}
+        {activeTab === "members" && <MembersTab projectId={project.id} />}
+        {activeTab === "iam" && <IAMTab projectId={project.id} />}
+        {activeTab === "apikeys" && <APIKeysTab projectId={project.id} />}
         {activeTab === "settings" && <SettingsTab project={project} />}
         {/* You can add more tab conditions here in the future */}
       </div>

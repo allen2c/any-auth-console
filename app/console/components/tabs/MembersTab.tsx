@@ -424,46 +424,94 @@ export default function MembersTab({ projectId }: MembersTabProps) {
                   {new Date(member.joined_at * 1000).toLocaleDateString()}
                 </td>
 
-                {/* Updated roles column to display multiple roles */}
+                {/* Role column with priority display */}
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-wrap gap-1">
-                    {member.roles && member.roles.length > 0 ? (
-                      member.roles.map((role) => (
+                  {member.roles && member.roles.length > 0 ? (
+                    (() => {
+                      // Define role constants
+                      const PROJECT_OWNER_ROLE_NAME = "ProjectOwner";
+                      const PROJECT_EDITOR_ROLE_NAME = "ProjectEditor";
+                      const PROJECT_VIEWER_ROLE_NAME = "ProjectViewer";
+
+                      // Check for roles by priority
+                      const isOwner = member.roles.some(
+                        (role) => role.name === PROJECT_OWNER_ROLE_NAME
+                      );
+                      const isEditor = member.roles.some(
+                        (role) => role.name === PROJECT_EDITOR_ROLE_NAME
+                      );
+                      const isViewer = member.roles.some(
+                        (role) => role.name === PROJECT_VIEWER_ROLE_NAME
+                      );
+
+                      // Determine role and style
+                      let roleName = "No role";
+                      let bgColor = "bg-gray-100";
+                      let textColor = "text-gray-800";
+
+                      if (isOwner) {
+                        roleName = "Owner";
+                        bgColor = "bg-purple-100";
+                        textColor = "text-purple-800";
+                      } else if (isEditor) {
+                        roleName = "Editor";
+                        bgColor = "bg-blue-100";
+                        textColor = "text-blue-800";
+                      } else if (isViewer) {
+                        roleName = "Viewer";
+                        bgColor = "bg-green-100";
+                        textColor = "text-green-800";
+                      }
+
+                      return (
                         <span
-                          key={role.id}
-                          className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                          className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${bgColor} ${textColor}`}
                         >
-                          {role.name}
+                          {roleName}
                         </span>
-                      ))
-                    ) : (
-                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
-                        No roles
-                      </span>
-                    )}
-                  </div>
+                      );
+                    })()
+                  ) : (
+                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                      No role
+                    </span>
+                  )}
                 </td>
 
+                {/* Delete button */}
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteClick(member)}
-                    className="p-1.5 rounded-full text-red-600 hover:text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
-                    title="Delete member"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="h-5 w-5"
-                      viewBox="0 0 20 20"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  </button>
+                  {/* Hide delete button if member is the current user */}
+                  {(() => {
+                    // Check if this member is the current logged-in user
+                    const isCurrentUser =
+                      session?.user &&
+                      (session.user.id === member.user_id ||
+                        session.user.email === member.userDetails?.email);
+
+                    return (
+                      !isCurrentUser && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteClick(member)}
+                          className="p-1.5 rounded-full text-red-600 hover:text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                          title="Delete member"
+                        >
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5"
+                            viewBox="0 0 20 20"
+                            fill="currentColor"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        </button>
+                      )
+                    );
+                  })()}
                 </td>
               </tr>
             ))}

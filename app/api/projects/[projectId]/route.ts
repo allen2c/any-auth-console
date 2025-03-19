@@ -10,7 +10,10 @@ export async function GET(
     const projectId = params.projectId;
 
     // Get user's session token
-    const token = await getToken({ req: request });
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
 
     if (!token?.accessToken) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

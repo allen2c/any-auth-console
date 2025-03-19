@@ -51,11 +51,24 @@ export function useAuthApi(options: UseAuthApiOptions = {}) {
         console.log("Session updated with new tokens");
       } catch (error) {
         console.error("Token refresh failed:", error);
-        // If refresh fails, clear the refresh state and redirect to login if needed
-        if (options.redirectToLogin) {
-          console.log("Redirecting to login page...");
+
+        // Check for specific token expiration error
+        if (
+          error instanceof Error &&
+          (error.message === "TOKEN_EXPIRED" ||
+            error.message.includes("expired") ||
+            error.message.includes("401"))
+        ) {
+          console.log("Refresh token has expired, redirecting to login...");
+
+          // Always redirect to login for expired tokens
+          signIn();
+        } else if (options.redirectToLogin) {
+          // For other errors, follow the option setting
+          console.log("Redirecting to login page due to refresh error...");
           signIn();
         }
+
         throw error;
       } finally {
         isRefreshing.current = false;

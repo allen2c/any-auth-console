@@ -61,23 +61,10 @@ export async function refreshJwtToken(
   try {
     console.log("Attempting to refresh token...");
 
-    // Log token for debugging (truncate for security)
-    const tokenPreview =
-      refreshToken.substring(0, 8) +
-      "..." +
-      refreshToken.substring(refreshToken.length - 8);
-    console.log(`Refresh token preview: ${tokenPreview}`);
-
     // Create FormData to match the backend expectation
     const formData = new URLSearchParams();
     formData.append("grant_type", "refresh_token");
     formData.append("refresh_token", refreshToken);
-
-    console.log(
-      "Sending refresh request with form data:",
-      `grant_type=${formData.get("grant_type")}, ` +
-        `refresh_token length=${refreshToken.length}`
-    );
 
     const response = await fetch("http://localhost:8000/refresh", {
       method: "POST",
@@ -89,20 +76,35 @@ export async function refreshJwtToken(
 
     console.log(`Refresh token response status: ${response.status}`);
 
-    // Try to log the response even if it's an error
+    // Try to get the response text
     const responseText = await response.text();
-    console.log("Response text:", responseText);
 
     if (!response.ok) {
       // Parse the response back to JSON if possible, otherwise use the text
       let errorDetail;
+      let isExpiredToken = false;
+
       try {
-        errorDetail = JSON.parse(responseText).detail || responseText;
+        const errorJson = JSON.parse(responseText);
+        errorDetail = errorJson.detail || responseText;
+
+        // Check if the error indicates token expiration
+        isExpiredToken =
+          errorDetail.includes("expired") ||
+          errorDetail.includes("has expired") ||
+          response.status === 401;
       } catch {
         errorDetail = responseText || `HTTP error: ${response.status}`;
+        isExpiredToken = response.status === 401;
       }
 
       console.error(`Refresh token failed: ${errorDetail}`);
+
+      // Throw a specific error for expired tokens
+      if (isExpiredToken) {
+        throw new Error("TOKEN_EXPIRED");
+      }
+
       throw new Error(`Refresh token failed: ${errorDetail}`);
     }
 

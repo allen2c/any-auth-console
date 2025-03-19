@@ -26,9 +26,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For debugging - log the token structure (remove in production)
-    console.log("Token available:", !!token.accessToken);
-
     try {
       // Forward the request to the backend API with the user's token
       const response = await fetch("http://localhost:8000/me/projects", {
@@ -40,7 +37,10 @@ export async function GET(request: NextRequest) {
       });
 
       // For debugging
-      console.log("Backend response status:", response.status);
+      console.log(
+        "Backend API '/me/projects' response status:",
+        response.status
+      );
 
       if (!response.ok) {
         // Return a more graceful error with empty items array

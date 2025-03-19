@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
       });
 
       // For debugging
-      console.log("Backend response status:", response.status);
+      console.log("Backend API '/me' response status:", response.status);
 
       if (!response.ok) {
         return NextResponse.json(

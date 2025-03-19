@@ -5,7 +5,9 @@ import { useState } from "react";
 import { useProject } from "@/app/hooks/useProject";
 import TabNavigation from "./TabNavigation";
 import ServicesTab from "./tabs/ServicesTab";
-import MembersTab from "./tabs/MembersTab"; // Import the new MembersTab
+import MembersTab from "./tabs/MembersTab";
+import IAMTab from "./tabs/IAMTab";
+import APIKeysTab from "./tabs/APIKeysTab";
 import SettingsTab from "./tabs/SettingsTab";
 import LoadingState from "./ui/LoadingState";
 import ErrorState from "./ui/ErrorState";
@@ -24,6 +26,8 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   const tabs = [
     { id: "services", label: "Services" },
     { id: "members", label: "Members" }, // Add the new Members tab
+    { id: "iam", label: "IAM" },
+    { id: "apikeys", label: "API Keys" },
     { id: "settings", label: "Settings" },
     // You can easily add more tabs here in the future
   ];

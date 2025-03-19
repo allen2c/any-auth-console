@@ -109,19 +109,26 @@ export const authConfig: NextAuthConfig = {
       // Access token has expired, try to refresh it
       if (token.refreshToken) {
         try {
+          console.log("Token expired, attempting refresh...");
           const refreshedTokens = await refreshJwtToken(
             token.refreshToken as string
           );
+
+          console.log("Token refresh successful!");
+
+          // Store the new token expiration time
+          const newExpiryTime = Date.now() + refreshedTokens.expires_in * 1000;
 
           return {
             ...token,
             accessToken: refreshedTokens.access_token,
             refreshToken: refreshedTokens.refresh_token,
-            accessTokenExpires: Date.now() + refreshedTokens.expires_in * 1000,
+            accessTokenExpires: newExpiryTime,
           };
         } catch (error) {
           console.error("Error refreshing token:", error);
-          // Return token without refresh - user will need to sign in again
+
+          // Return token with an error flag - user will need to sign in again
           return {
             ...token,
             error: "RefreshAccessTokenError",

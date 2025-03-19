@@ -61,12 +61,23 @@ export async function refreshJwtToken(
   try {
     console.log("Attempting to refresh token...");
 
+    // Log token for debugging (truncate for security)
+    const tokenPreview =
+      refreshToken.substring(0, 8) +
+      "..." +
+      refreshToken.substring(refreshToken.length - 8);
+    console.log(`Refresh token preview: ${tokenPreview}`);
+
     // Create FormData to match the backend expectation
     const formData = new URLSearchParams();
     formData.append("grant_type", "refresh_token");
     formData.append("refresh_token", refreshToken);
 
-    console.log("Sending refresh request with form data...");
+    console.log(
+      "Sending refresh request with form data:",
+      `grant_type=${formData.get("grant_type")}, ` +
+        `refresh_token length=${refreshToken.length}`
+    );
 
     const response = await fetch("http://localhost:8000/refresh", {
       method: "POST",
@@ -78,23 +89,25 @@ export async function refreshJwtToken(
 
     console.log(`Refresh token response status: ${response.status}`);
 
+    // Try to log the response even if it's an error
+    const responseText = await response.text();
+    console.log("Response text:", responseText);
+
     if (!response.ok) {
-      // Try to get more detailed error information
-      let errorDetail = "Unknown error";
+      // Parse the response back to JSON if possible, otherwise use the text
+      let errorDetail;
       try {
-        const errorData = await response.json();
-        errorDetail =
-          errorData.detail || errorData.error || JSON.stringify(errorData);
+        errorDetail = JSON.parse(responseText).detail || responseText;
       } catch {
-        errorDetail =
-          (await response.text()) || `HTTP error: ${response.status}`;
+        errorDetail = responseText || `HTTP error: ${response.status}`;
       }
 
       console.error(`Refresh token failed: ${errorDetail}`);
       throw new Error(`Refresh token failed: ${errorDetail}`);
     }
 
-    const newTokens = await response.json();
+    // Parse JSON from the text we already got
+    const newTokens = JSON.parse(responseText);
     console.log("Successfully refreshed tokens");
 
     return newTokens;

@@ -1,5 +1,4 @@
 // app/services/projects.ts
-import { useSession } from "next-auth/react";
 
 export interface Project {
   id: string;
@@ -7,7 +6,7 @@ export interface Project {
   name: string;
   full_name: string | null;
   disabled: boolean;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   created_by: string;
   created_at: number;
   updated_at: number;
@@ -23,10 +22,10 @@ export interface ProjectsResponse {
 /**
  * Fetch all projects for the current user
  */
-export async function fetchUserProjects(): Promise<Project[]> {
-  const session = await useSession().data;
-
-  if (!session?.accessToken) {
+export async function fetchUserProjects(
+  accessToken: string
+): Promise<Project[]> {
+  if (!accessToken) {
     throw new Error("Authentication required");
   }
 
@@ -34,7 +33,7 @@ export async function fetchUserProjects(): Promise<Project[]> {
     const response = await fetch("http://localhost:8000/me/projects", {
       method: "GET",
       headers: {
-        Authorization: `Bearer ${session.accessToken}`,
+        Authorization: `Bearer ${accessToken}`,
         "Content-Type": "application/json",
       },
     });
@@ -54,10 +53,11 @@ export async function fetchUserProjects(): Promise<Project[]> {
 /**
  * Fetch a specific project by ID
  */
-export async function fetchProjectById(projectId: string): Promise<Project> {
-  const session = await useSession().data;
-
-  if (!session?.accessToken) {
+export async function fetchProjectById(
+  projectId: string,
+  accessToken: string
+): Promise<Project> {
+  if (!accessToken) {
     throw new Error("Authentication required");
   }
 
@@ -67,7 +67,7 @@ export async function fetchProjectById(projectId: string): Promise<Project> {
       {
         method: "GET",
         headers: {
-          Authorization: `Bearer ${session.accessToken}`,
+          Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
       }

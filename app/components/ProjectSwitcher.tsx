@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Project, fetchUserProjects } from "@/app/services/projects";
+import { Project } from "@/app/services/projects";
+import { useProjects } from "@/app/hooks/useProject";
 
 interface ProjectSwitcherProps {
   currentProjectId?: string;
@@ -13,12 +14,12 @@ export default function ProjectSwitcher({
   currentProjectId,
 }: ProjectSwitcherProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+
+  // Use the hook instead of direct API call
+  const { projects, isLoading, error } = useProjects();
 
   useEffect(() => {
     // Click outside to close dropdown
@@ -38,37 +39,25 @@ export default function ProjectSwitcher({
   }, []);
 
   useEffect(() => {
-    async function loadProjects() {
-      setIsLoading(true);
-      try {
-        const projectList = await fetchUserProjects();
-        setProjects(projectList);
-
-        // Set current project if ID is provided
-        if (currentProjectId) {
-          const current = projectList.find((p) => p.id === currentProjectId);
-          if (current) {
-            setCurrentProject(current);
-          } else if (projectList.length > 0) {
-            // If current project not found but we have projects, use the first one
-            setCurrentProject(projectList[0]);
-          }
-        } else if (projectList.length > 0) {
-          // If no current project ID, use the first one
-          setCurrentProject(projectList[0]);
-          // Navigate to the first project
-          router.push(`/console?project_id=${projectList[0].id}`);
+    // Set current project when projects load
+    if (!isLoading && projects.length > 0) {
+      // Set current project if ID is provided
+      if (currentProjectId) {
+        const current = projects.find((p) => p.id === currentProjectId);
+        if (current) {
+          setCurrentProject(current);
+        } else if (projects.length > 0) {
+          // If current project not found but we have projects, use the first one
+          setCurrentProject(projects[0]);
         }
-      } catch (err) {
-        console.error("Failed to load projects:", err);
-        setError("Failed to load projects. Please try again.");
-      } finally {
-        setIsLoading(false);
+      } else if (projects.length > 0) {
+        // If no current project ID, use the first one
+        setCurrentProject(projects[0]);
+        // Navigate to the first project
+        router.push(`/console?project_id=${projects[0].id}`);
       }
     }
-
-    loadProjects();
-  }, [currentProjectId, router]);
+  }, [projects, isLoading, currentProjectId, router]);
 
   function handleSwitchProject(project: Project) {
     router.push(`/console?project_id=${project.id}`);

@@ -50,11 +50,14 @@ export default function MembersTab({ projectId }: MembersTabProps) {
         const membersWithUserDetails = await Promise.all(
           membersList.map(async (member) => {
             try {
-              const userResponse = await fetch(`/api/users/${member.user_id}`, {
-                headers: {
-                  Authorization: `Bearer ${session.accessToken}`,
-                },
-              });
+              const userResponse = await fetch(
+                `/api/projects/${projectId}/members/${member.id}/user`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${session.accessToken}`,
+                  },
+                }
+              );
 
               if (userResponse.ok) {
                 const userData = await userResponse.json();

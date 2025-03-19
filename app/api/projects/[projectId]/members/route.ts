@@ -26,7 +26,7 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ): Promise<NextResponse<Page<ProjectMember> | { error: string }>> {
   try {
-    const projectId = params.projectId;
+    const { projectId } = await params;
 
     // Get user's session token
     const token = await getToken({

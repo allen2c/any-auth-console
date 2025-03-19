@@ -16,7 +16,7 @@ export default function NewProject() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!session?.accessToken) {
+    if (!session?.user?.id) {
       setError("You must be logged in to create a project");
       return;
     }
@@ -32,11 +32,12 @@ export default function NewProject() {
         );
       }
 
-      const response = await fetch("http://localhost:8000/projects", {
+      // Call our API route instead of directly calling the backend
+      const response = await fetch("/api/projects", {
         method: "POST",
         headers: {
-          Authorization: `Bearer ${session.accessToken}`,
           "Content-Type": "application/json",
+          "x-user-id": session.user.id,
         },
         body: JSON.stringify({
           name: projectName,
@@ -44,17 +45,16 @@ export default function NewProject() {
         }),
       });
 
+      const data = await response.json();
+
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null);
         throw new Error(
-          errorData?.detail || `Failed to create project (${response.status})`
+          data.detail || `Failed to create project (${response.status})`
         );
       }
 
-      const project = await response.json();
-
       // Redirect to the console with the new project
-      router.push(`/console?project_id=${project.id}`);
+      router.push(`/console?project_id=${data.id}`);
     } catch (err) {
       console.error("Error creating project:", err);
       setError(err instanceof Error ? err.message : "Failed to create project");

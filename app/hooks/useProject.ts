@@ -8,11 +8,11 @@ export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     async function fetchProject() {
-      if (!projectId || !session?.accessToken) {
+      if (!projectId || status !== "authenticated") {
         setIsLoading(false);
         return;
       }
@@ -21,11 +21,7 @@ export function useProject(projectId: string | null) {
       setError(null);
 
       try {
-        const response = await fetch(`/api/projects/${projectId}`, {
-          headers: {
-            Authorization: `Bearer ${session.accessToken}`,
-          },
-        });
+        const response = await fetch(`/api/projects/${projectId}`);
 
         if (!response.ok) {
           throw new Error(`Failed to fetch project: ${response.status}`);
@@ -42,7 +38,7 @@ export function useProject(projectId: string | null) {
     }
 
     fetchProject();
-  }, [projectId, session]);
+  }, [projectId, status]);
 
   return { project, isLoading, error };
 }
@@ -51,11 +47,11 @@ export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     async function fetchProjects() {
-      if (!session?.accessToken) {
+      if (status !== "authenticated") {
         setIsLoading(false);
         return;
       }
@@ -64,11 +60,7 @@ export function useProjects() {
       setError(null);
 
       try {
-        const response = await fetch("/api/me/projects", {
-          headers: {
-            Authorization: `Bearer ${session.accessToken}`,
-          },
-        });
+        const response = await fetch("/api/me/projects");
 
         if (!response.ok) {
           throw new Error(`Failed to fetch projects: ${response.status}`);
@@ -87,7 +79,7 @@ export function useProjects() {
     }
 
     fetchProjects();
-  }, [session]);
+  }, [status]);
 
   return { projects, isLoading, error };
 }

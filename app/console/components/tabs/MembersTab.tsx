@@ -21,6 +21,11 @@ export default function MembersTab({ projectId }: MembersTabProps) {
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
 
+  // Add states for delete confirmation modal
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [memberToDelete, setMemberToDelete] =
+    useState<MemberWithUserInfo | null>(null);
+
   useEffect(() => {
     async function fetchMembers() {
       if (!projectId || !session?.accessToken) {
@@ -118,6 +123,86 @@ export default function MembersTab({ projectId }: MembersTabProps) {
 
     fetchMembers();
   }, [projectId, session]);
+
+  // Handle opening delete confirmation modal
+  const handleDeleteClick = (member: MemberWithUserInfo) => {
+    setMemberToDelete(member);
+    setIsDeleteModalOpen(true);
+  };
+
+  // Handle confirming deletion
+  const confirmDelete = async () => {
+    if (!memberToDelete || !session?.accessToken) return;
+
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/members/${memberToDelete.id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${session.accessToken}`,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to delete member: ${response.status}`);
+      }
+
+      // Remove the deleted member from the state
+      setMembers(members.filter((member) => member.id !== memberToDelete.id));
+
+      // Close the modal
+      setIsDeleteModalOpen(false);
+      setMemberToDelete(null);
+    } catch (err) {
+      console.error("Error deleting member:", err);
+      setError(err instanceof Error ? err.message : "Failed to delete member");
+    }
+  };
+
+  // Delete confirmation modal component
+  const DeleteConfirmationModal = () => {
+    if (!isDeleteModalOpen || !memberToDelete) return null;
+
+    const userName =
+      memberToDelete.userDetails?.full_name ||
+      memberToDelete.userDetails?.username ||
+      "this user";
+
+    return (
+      <div className="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+          <h3 className="text-lg font-medium text-gray-900">
+            Confirm Deletion
+          </h3>
+          <p className="mt-2 text-sm text-gray-500">
+            Are you sure you want to remove {userName} from this project? This
+            action cannot be undone.
+          </p>
+          <div className="mt-4 flex justify-end space-x-3">
+            <button
+              type="button"
+              onClick={() => {
+                setIsDeleteModalOpen(false);
+                setMemberToDelete(null);
+              }}
+              className="inline-flex justify-center px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={confirmDelete}
+              className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   if (isLoading) {
     return (
@@ -362,9 +447,22 @@ export default function MembersTab({ projectId }: MembersTabProps) {
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     type="button"
-                    className="text-blue-600 hover:text-blue-900"
+                    onClick={() => handleDeleteClick(member)}
+                    className="p-1.5 rounded-full text-red-600 hover:text-white hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+                    title="Delete member"
                   >
-                    Manage
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="h-5 w-5"
+                      viewBox="0 0 20 20"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
                   </button>
                 </td>
               </tr>
@@ -372,6 +470,9 @@ export default function MembersTab({ projectId }: MembersTabProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Render the delete confirmation modal */}
+      <DeleteConfirmationModal />
     </div>
   );
 }

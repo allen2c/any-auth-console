@@ -3,7 +3,8 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { ProjectMember, User } from "@/app/types/api";
+import Image from "next/image";
+import { ProjectMember, User, Role } from "@/app/types/api";
 
 interface MembersTabProps {
   projectId: string;
@@ -11,6 +12,7 @@ interface MembersTabProps {
 
 interface MemberWithUserInfo extends ProjectMember {
   userDetails?: User;
+  roles?: Role[]; // Add roles to track member roles
 }
 
 export default function MembersTab({ projectId }: MembersTabProps) {
@@ -46,9 +48,13 @@ export default function MembersTab({ projectId }: MembersTabProps) {
         const data = await response.json();
         const membersList: ProjectMember[] = data.data || [];
 
-        // For each member, fetch user details
-        const membersWithUserDetails = await Promise.all(
+        // For each member, fetch user details and roles
+        const membersWithDetails = await Promise.all(
           membersList.map(async (member) => {
+            let userDetails;
+            let roles = [];
+
+            // Fetch user details
             try {
               const userResponse = await fetch(
                 `/api/projects/${projectId}/members/${member.id}/user`,
@@ -60,21 +66,46 @@ export default function MembersTab({ projectId }: MembersTabProps) {
               );
 
               if (userResponse.ok) {
-                const userData = await userResponse.json();
-                return { ...member, userDetails: userData };
+                userDetails = await userResponse.json();
               }
-              return member;
             } catch (error) {
               console.error(
                 `Error fetching user details for ${member.user_id}:`,
                 error
               );
-              return member;
             }
+
+            // Fetch member roles
+            try {
+              const rolesResponse = await fetch(
+                `/api/projects/${projectId}/members/${member.id}/roles`,
+                {
+                  headers: {
+                    Authorization: `Bearer ${session.accessToken}`,
+                  },
+                }
+              );
+
+              if (rolesResponse.ok) {
+                const rolesData = await rolesResponse.json();
+                roles = rolesData.data || [];
+              }
+            } catch (error) {
+              console.error(
+                `Error fetching roles for member ${member.id}:`,
+                error
+              );
+            }
+
+            return {
+              ...member,
+              userDetails,
+              roles,
+            };
           })
         );
 
-        setMembers(membersWithUserDetails);
+        setMembers(membersWithDetails);
       } catch (err) {
         console.error("Error fetching project members:", err);
         setError(
@@ -247,11 +278,12 @@ export default function MembersTab({ projectId }: MembersTabProps) {
           <tbody className="bg-white divide-y divide-gray-200">
             {members.map((member) => (
               <tr key={member.id} className="hover:bg-gray-50">
+                {/* User column */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="flex-shrink-0 h-10 w-10">
                       {member.userDetails?.picture ? (
-                        <img
+                        <Image
                           className="h-10 w-10 rounded-full"
                           src={member.userDetails.picture}
                           alt={
@@ -259,6 +291,8 @@ export default function MembersTab({ projectId }: MembersTabProps) {
                             member.userDetails.username ||
                             "User"
                           }
+                          width={40}
+                          height={40}
                         />
                       ) : (
                         <div className="h-10 w-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-medium">
@@ -286,6 +320,8 @@ export default function MembersTab({ projectId }: MembersTabProps) {
                     </div>
                   </div>
                 </td>
+
+                {/* Status column */}
                 <td className="px-6 py-4 whitespace-nowrap">
                   {member.userDetails?.disabled ? (
                     <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
@@ -297,14 +333,32 @@ export default function MembersTab({ projectId }: MembersTabProps) {
                     </span>
                   )}
                 </td>
+
+                {/* Joined date */}
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {new Date(member.joined_at * 1000).toLocaleDateString()}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                    Member
-                  </span>
+
+                {/* Updated roles column to display multiple roles */}
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex flex-wrap gap-1">
+                    {member.roles && member.roles.length > 0 ? (
+                      member.roles.map((role) => (
+                        <span
+                          key={role.id}
+                          className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                        >
+                          {role.name}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                        No roles
+                      </span>
+                    )}
+                  </div>
                 </td>
+
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <button
                     type="button"

@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
 
     // Make request to backend API with application token
     const response = await fetch(
-      `${process.env.BACKEND_API_URL}/roles?limit=${limit}&order=${order}&after=${after}&before=${before}`,
+      `http://localhost:8000/roles?limit=${limit}&order=${order}&after=${after}&before=${before}`,
       {
         method: "GET",
         headers: {

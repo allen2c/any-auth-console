@@ -40,7 +40,7 @@ export async function GET(
 
     // Make request to backend API with session token
     const response = await fetch(
-      `${process.env.BACKEND_API_URL}/projects/${projectId}/members`,
+      `http://localhost:8000/projects/${projectId}/members`,
       {
         method: "GET",
         headers: {

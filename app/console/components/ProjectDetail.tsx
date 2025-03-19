@@ -5,6 +5,7 @@ import { useState } from "react";
 import { useProject } from "@/app/hooks/useProject";
 import TabNavigation from "./TabNavigation";
 import ServicesTab from "./tabs/ServicesTab";
+import MembersTab from "./tabs/MembersTab"; // Import the new MembersTab
 import SettingsTab from "./tabs/SettingsTab";
 import LoadingState from "./ui/LoadingState";
 import ErrorState from "./ui/ErrorState";
@@ -22,6 +23,7 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
   // Define available tabs
   const tabs = [
     { id: "services", label: "Services" },
+    { id: "members", label: "Members" }, // Add the new Members tab
     { id: "settings", label: "Settings" },
     // You can easily add more tabs here in the future
   ];
@@ -82,6 +84,8 @@ export default function ProjectDetail({ projectId }: ProjectDetailProps) {
       {/* Tab content */}
       <div className="mt-6">
         {activeTab === "services" && <ServicesTab />}
+        {activeTab === "members" && <MembersTab projectId={project.id} />}{" "}
+        {/* Add the MembersTab component */}
         {activeTab === "settings" && <SettingsTab project={project} />}
         {/* You can add more tab conditions here in the future */}
       </div>

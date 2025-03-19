@@ -21,7 +21,7 @@ export async function GET(
 
     // Make request to backend API with session token
     const response = await fetch(
-      `${process.env.BACKEND_API_URL}/projects/${projectId}/members/${memberId}/role-assignments`,
+      `http://localhost:8000/projects/${projectId}/members/${memberId}/role-assignments`,
       {
         method: "GET",
         headers: {
@@ -71,7 +71,7 @@ export async function POST(
 
     // Make request to backend API with session token
     const response = await fetch(
-      `${process.env.BACKEND_API_URL}/projects/${projectId}/members/${memberId}/role-assignments`,
+      `http://localhost:8000/projects/${projectId}/members/${memberId}/role-assignments`,
       {
         method: "POST",
         headers: {

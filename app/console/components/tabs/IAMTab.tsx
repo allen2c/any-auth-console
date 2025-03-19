@@ -27,7 +27,49 @@ function EditRolesPanel({
   availableRoles,
   onUpdate,
 }: EditRolesPanelProps) {
+  const [selectedRoleIds, setSelectedRoleIds] = useState<string[]>([]);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
+  // Initialize selected roles when member changes
+  useEffect(() => {
+    if (member && member.roles) {
+      setSelectedRoleIds(member.roles.map((role) => role.id));
+    } else {
+      setSelectedRoleIds([]);
+    }
+  }, [member]);
+
   if (!isOpen || !member) return null;
+
+  const filteredRoles = availableRoles.filter(
+    (role) =>
+      role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (role.description &&
+        role.description.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const handleRoleToggle = (roleId: string) => {
+    setSelectedRoleIds((prev) =>
+      prev.includes(roleId)
+        ? prev.filter((id) => id !== roleId)
+        : [...prev, roleId]
+    );
+  };
+
+  const handleRemoveRole = (roleId: string) => {
+    setSelectedRoleIds((prev) => prev.filter((id) => id !== roleId));
+  };
+
+  const handleUpdate = async () => {
+    setIsUpdating(true);
+    try {
+      await onUpdate(member.id, selectedRoleIds);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   return (
     <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-lg transform transition-transform duration-300 ease-in-out">
@@ -64,21 +106,135 @@ function EditRolesPanel({
                 member.userDetails?.username ||
                 "Unknown User"}
             </p>
+            <p className="text-sm text-gray-500 mt-1">
+              {member.userDetails?.email || "No email available"}
+            </p>
           </div>
 
           <div className="space-y-4">
             <p className="text-sm font-medium text-gray-900">Roles</p>
-            <div className="space-y-2">
-              {availableRoles.map((role) => (
-                <label key={role.id} className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                    checked={member.roles?.some((r) => r.id === role.id)}
-                  />
-                  <span className="text-sm text-gray-700">{role.name}</span>
-                </label>
-              ))}
+
+            {/* Selected roles display */}
+            <div className="flex flex-wrap gap-2 mb-3">
+              {selectedRoleIds.length > 0 ? (
+                selectedRoleIds.map((roleId) => {
+                  const role = availableRoles.find((r) => r.id === roleId);
+                  if (!role) return null;
+                  return (
+                    <div
+                      key={roleId}
+                      className="flex items-center bg-blue-100 text-blue-800 rounded-full px-3 py-1 text-sm"
+                    >
+                      {role.name}
+                      <button
+                        onClick={() => handleRemoveRole(roleId)}
+                        className="ml-1 text-blue-600 hover:text-blue-800"
+                      >
+                        <svg
+                          className="h-4 w-4"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M6 18L18 6M6 6l12 12"
+                          />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="text-sm text-gray-500">No roles selected</div>
+              )}
+            </div>
+
+            {/* Dropdown selector */}
+            <div className="relative">
+              <div className="w-full">
+                <div
+                  className="flex justify-between items-center w-full border border-gray-300 rounded-md px-3 py-2 bg-white text-sm cursor-pointer"
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                >
+                  <span className="text-gray-700">
+                    {selectedRoleIds.length > 0
+                      ? `${selectedRoleIds.length} role${
+                          selectedRoleIds.length !== 1 ? "s" : ""
+                        } selected`
+                      : "Select roles"}
+                  </span>
+                  <svg
+                    className={`h-5 w-5 text-gray-400 transition-transform ${
+                      isDropdownOpen ? "transform rotate-180" : ""
+                    }`}
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+              </div>
+
+              {isDropdownOpen && (
+                <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                  <div className="sticky top-0 bg-white p-2 border-b border-gray-200">
+                    <input
+                      type="text"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Search roles..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+
+                  {filteredRoles.length === 0 ? (
+                    <div className="p-3 text-center text-sm text-gray-500">
+                      No roles match your search
+                    </div>
+                  ) : (
+                    <ul className="py-1">
+                      {filteredRoles.map((role) => (
+                        <li
+                          key={role.id}
+                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRoleToggle(role.id);
+                          }}
+                        >
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                              checked={selectedRoleIds.includes(role.id)}
+                              onChange={() => {}} // Handled by parent click
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                            <div className="ml-3">
+                              <span className="text-sm font-medium text-gray-700">
+                                {role.name}
+                              </span>
+                              {role.description && (
+                                <p className="text-xs text-gray-500">
+                                  {role.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -88,14 +244,16 @@ function EditRolesPanel({
             <button
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+              disabled={isUpdating}
             >
               Cancel
             </button>
             <button
-              onClick={() => onUpdate(member.id, [])}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700"
+              onClick={handleUpdate}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md hover:bg-blue-700 disabled:bg-blue-400 disabled:cursor-not-allowed"
+              disabled={isUpdating}
             >
-              Update
+              {isUpdating ? "Updating..." : "Update"}
             </button>
           </div>
         </div>

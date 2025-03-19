@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Project } from "../services/projects";
+import { Project, ProjectsResponse } from "../types/api";
 
 export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
@@ -27,7 +27,7 @@ export function useProject(projectId: string | null) {
           throw new Error(`Failed to fetch project: ${response.status}`);
         }
 
-        const projectData = await response.json();
+        const projectData = (await response.json()) as Project;
         setProject(projectData);
       } catch (err) {
         console.error("Error fetching project:", err);
@@ -66,8 +66,8 @@ export function useProjects() {
           throw new Error(`Failed to fetch projects: ${response.status}`);
         }
 
-        const data = await response.json();
-        setProjects(data.items || []);
+        const data = (await response.json()) as ProjectsResponse;
+        setProjects(data.data || []);
       } catch (err) {
         console.error("Error fetching projects:", err);
         setError(

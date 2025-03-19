@@ -1,6 +1,17 @@
 // app/types/api.ts
 
 /**
+ * Generic pagination type matching backend Page model
+ */
+export interface Page<T> {
+  object: "list";
+  data: T[];
+  first_id: string | null;
+  last_id: string | null;
+  has_more: boolean;
+}
+
+/**
  * Project entity interface matching backend model
  */
 export interface Project {
@@ -14,6 +25,11 @@ export interface Project {
   created_at: number;
   updated_at: number;
 }
+
+/**
+ * Projects response format from the API
+ */
+export type ProjectsResponse = Page<Project>;
 
 /**
  * Project creation request interface

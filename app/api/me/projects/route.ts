@@ -1,6 +1,7 @@
 // app/api/me/projects/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { ProjectsResponse } from "@/app/types/api";
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,7 +14,14 @@ export async function GET(request: NextRequest) {
     if (!token?.accessToken) {
       console.log("No access token available");
       return NextResponse.json(
-        { error: "Unauthorized", items: [] },
+        {
+          object: "list",
+          data: [],
+          first_id: null,
+          last_id: null,
+          has_more: false,
+          error: "Unauthorized",
+        } as ProjectsResponse,
         { status: 401 }
       );
     }
@@ -38,35 +46,47 @@ export async function GET(request: NextRequest) {
         // Return a more graceful error with empty items array
         return NextResponse.json(
           {
+            object: "list",
+            data: [],
+            first_id: null,
+            last_id: null,
+            has_more: false,
             error: `Failed to fetch projects: ${response.status}`,
-            items: [],
-          },
+          } as ProjectsResponse,
           { status: response.status }
         );
       }
 
       // Return the projects data
-      const data = await response.json();
+      const data = (await response.json()) as ProjectsResponse;
       return NextResponse.json(data);
     } catch (fetchError) {
       console.error("Network error fetching projects:", fetchError);
-      // Return empty items array with the error
+      // Return empty page with the error
       return NextResponse.json(
         {
+          object: "list",
+          data: [],
+          first_id: null,
+          last_id: null,
+          has_more: false,
           error: "Failed to connect to backend service",
-          items: [],
-        },
+        } as ProjectsResponse,
         { status: 500 }
       );
     }
   } catch (error) {
     console.error("Error in projects API route:", error);
-    // Return empty items array with the error
+    // Return empty page with the error
     return NextResponse.json(
       {
+        object: "list",
+        data: [],
+        first_id: null,
+        last_id: null,
+        has_more: false,
         error: "Internal server error",
-        items: [],
-      },
+      } as ProjectsResponse,
       { status: 500 }
     );
   }

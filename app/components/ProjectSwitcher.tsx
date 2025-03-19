@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Project } from "@/app/services/projects";
+import { Project } from "@/app/types/api";
 import { useProjects } from "@/app/hooks/useProject";
 
 interface ProjectSwitcherProps {
@@ -18,7 +18,7 @@ export default function ProjectSwitcher({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
 
-  // Use the hook instead of direct API call
+  // Use the hook to get projects from the API
   const { projects, isLoading, error } = useProjects();
 
   useEffect(() => {

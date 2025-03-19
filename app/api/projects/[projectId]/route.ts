@@ -2,12 +2,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: { projectId: string } }
-) {
+export async function GET(request: NextRequest) {
   try {
-    const projectId = params.projectId;
+    // Extract projectId from the URL directly
+    const url = new URL(request.url);
+    const pathParts = url.pathname.split("/");
+    const projectId = pathParts[pathParts.length - 1]; // Get the last segment of the path
 
     // Get user's session token
     const token = await getToken({

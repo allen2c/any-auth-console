@@ -39,6 +39,9 @@ export async function fetchJwtToken(
     });
 
     if (!response.ok) {
+      console.error(
+        `Backend token fetch failed with status: ${response.status}`
+      );
       throw new Error(`Backend returned status: ${response.status}`);
     }
 
@@ -56,22 +59,45 @@ export async function refreshJwtToken(
   refreshToken: string
 ): Promise<JwtTokenResponse> {
   try {
+    console.log("Attempting to refresh token...");
+
+    // Create FormData to match the backend expectation
+    const formData = new URLSearchParams();
+    formData.append("grant_type", "refresh_token");
+    formData.append("refresh_token", refreshToken);
+
+    console.log("Sending refresh request with form data...");
+
     const response = await fetch("http://localhost:8000/refresh", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: refreshToken,
-      }),
+      body: formData,
     });
 
+    console.log(`Refresh token response status: ${response.status}`);
+
     if (!response.ok) {
-      throw new Error(`Backend returned status: ${response.status}`);
+      // Try to get more detailed error information
+      let errorDetail = "Unknown error";
+      try {
+        const errorData = await response.json();
+        errorDetail =
+          errorData.detail || errorData.error || JSON.stringify(errorData);
+      } catch {
+        errorDetail =
+          (await response.text()) || `HTTP error: ${response.status}`;
+      }
+
+      console.error(`Refresh token failed: ${errorDetail}`);
+      throw new Error(`Refresh token failed: ${errorDetail}`);
     }
 
-    return await response.json();
+    const newTokens = await response.json();
+    console.log("Successfully refreshed tokens");
+
+    return newTokens;
   } catch (error) {
     console.error("Error refreshing JWT token:", error);
     throw error;
@@ -86,6 +112,7 @@ export async function loginWithCredentials(
   password: string
 ): Promise<JwtTokenResponse> {
   try {
+    // Create FormData instead of using URLSearchParams
     const formData = new FormData();
     formData.append("username", username);
     formData.append("password", password);

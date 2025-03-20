@@ -1,13 +1,14 @@
 // app/api/projects/[projectId]/members/[memberId]/role-assignments/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
+import { RoleAssignment } from "@/app/types/api";
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { projectId: string; memberId: string } }
 ) {
   try {
-    const { projectId, memberId } = params;
+    const { projectId, memberId } = await params;
 
     // Get user's session token
     const token = await getToken({
@@ -103,6 +104,65 @@ export async function POST(
     console.error("Error creating role assignment:", error);
     return NextResponse.json(
       { error: "Failed to create role assignment" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: { projectId: string; memberId: string } }
+) {
+  try {
+    const { projectId, memberId } = await params;
+
+    // Get user's session token
+    const token = await getToken({
+      req: request,
+      secret: process.env.NEXTAUTH_SECRET,
+    });
+
+    if (!token?.accessToken) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    // Get the request body (list of role assignments)
+    const roleAssignmentDataList = await request.json();
+
+    // Make request to backend API with session token
+    const response = await fetch(
+      `http://localhost:8000/projects/${projectId}/members/${memberId}/role-assignments`,
+      {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${token.accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(roleAssignmentDataList),
+      }
+    );
+
+    if (!response.ok) {
+      let errorDetail;
+      try {
+        const errorResponse = await response.json();
+        errorDetail = errorResponse.detail || `Status: ${response.status}`;
+      } catch {
+        errorDetail = `Status: ${response.status}`;
+      }
+
+      return NextResponse.json(
+        { error: `Failed to update role assignments: ${errorDetail}` },
+        { status: response.status }
+      );
+    }
+
+    const data: RoleAssignment[] = await response.json();
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error("Error updating role assignments:", error);
+    return NextResponse.json(
+      { error: "Failed to update role assignments" },
       { status: 500 }
     );
   }

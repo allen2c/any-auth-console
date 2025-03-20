@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Page, ProjectMember, Role, User } from "@/app/types/api";
 
 interface IAMTabProps {
@@ -272,6 +272,57 @@ export default function IAMTab({ projectId }: IAMTabProps) {
   );
   const [isEditPanelOpen, setIsEditPanelOpen] = useState(false);
 
+  // Define fetchMembers with useCallback
+  const fetchMembers = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Fetch all members of the project
+      const membersResponse = await fetch(`/api/projects/${projectId}/members`);
+      if (!membersResponse.ok) {
+        throw new Error(`Failed to fetch members: ${membersResponse.status}`);
+      }
+      const membersData: Page<ProjectMember> = await membersResponse.json();
+
+      // Get user details and roles for each member
+      const membersWithDetails: MemberWithUserInfo[] = await Promise.all(
+        membersData.data.map(async (member) => {
+          // Get user details
+          const userResponse = await fetch(
+            `/api/projects/${projectId}/members/${member.id}/user`
+          );
+          let userDetails: User | undefined;
+          if (userResponse.ok) {
+            userDetails = await userResponse.json();
+          }
+
+          // Get roles
+          const rolesResponse = await fetch(
+            `/api/projects/${projectId}/members/${member.id}/roles`
+          );
+          let roles: Role[] | undefined;
+          if (rolesResponse.ok) {
+            const rolesData: Page<Role> = await rolesResponse.json();
+            roles = rolesData.data;
+          }
+
+          return {
+            ...member,
+            userDetails,
+            roles,
+          };
+        })
+      );
+
+      setMembers(membersWithDetails);
+      setError(null);
+    } catch (err) {
+      console.error("Error fetching members:", err);
+      setError(err instanceof Error ? err.message : "Unknown error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [projectId]);
+
   useEffect(() => {
     const fetchRoles = async () => {
       try {
@@ -292,61 +343,10 @@ export default function IAMTab({ projectId }: IAMTabProps) {
   }, [projectId]);
 
   useEffect(() => {
-    const fetchMembers = async () => {
-      try {
-        setLoading(true);
-        // Fetch all members of the project
-        const membersResponse = await fetch(
-          `/api/projects/${projectId}/members`
-        );
-        if (!membersResponse.ok) {
-          throw new Error(`Failed to fetch members: ${membersResponse.status}`);
-        }
-        const membersData: Page<ProjectMember> = await membersResponse.json();
-
-        // Get user details and roles for each member
-        const membersWithDetails: MemberWithUserInfo[] = await Promise.all(
-          membersData.data.map(async (member) => {
-            // Get user details
-            const userResponse = await fetch(
-              `/api/projects/${projectId}/members/${member.id}/user`
-            );
-            let userDetails: User | undefined;
-            if (userResponse.ok) {
-              userDetails = await userResponse.json();
-            }
-
-            // Get roles
-            const rolesResponse = await fetch(
-              `/api/projects/${projectId}/members/${member.id}/roles`
-            );
-            let roles: Role[] | undefined;
-            if (rolesResponse.ok) {
-              const rolesData: Page<Role> = await rolesResponse.json();
-              roles = rolesData.data;
-            }
-
-            return {
-              ...member,
-              userDetails,
-              roles,
-            };
-          })
-        );
-
-        setMembers(membersWithDetails);
-      } catch (err) {
-        console.error("Error fetching members:", err);
-        setError(err instanceof Error ? err.message : "Unknown error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     if (projectId) {
       fetchMembers();
     }
-  }, [projectId]);
+  }, [projectId, fetchMembers]);
 
   const handleEditClick = (member: MemberWithUserInfo) => {
     setEditingMember(member);
@@ -359,9 +359,36 @@ export default function IAMTab({ projectId }: IAMTabProps) {
   };
 
   const handleUpdateRoles = (memberId: string, roleIds: string[]) => {
-    // TODO: Implement role update logic
-    console.log("Updating roles for member:", memberId, "with roles:", roleIds);
-    handleCloseEditPanel();
+    if (!projectId) return;
+
+    setLoading(true);
+
+    // Convert roleIds to the format expected by the API
+    const roleAssignments = roleIds.map((roleId) => ({ role: roleId }));
+
+    // Call the PUT API endpoint
+    fetch(`/api/projects/${projectId}/members/${memberId}/role-assignments`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(roleAssignments),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error(`Failed to update roles: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then(() => {
+        // Reload member data after successful update
+        fetchMembers();
+        handleCloseEditPanel();
+      })
+      .catch((err) => {
+        console.error("Error updating roles:", err);
+        setError(err.message);
+      });
   };
 
   return (

@@ -1,3 +1,4 @@
+// app/console/components/tabs/APIKeysTab.tsx
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -153,6 +154,8 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
     if (!projectId || !session?.accessToken) return;
 
     try {
+      setError(null);
+
       const payload = {
         name: formData.name,
         description: formData.description,
@@ -160,6 +163,8 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
           ? Math.floor(formData.expiresAt.getTime() / 1000)
           : null,
       };
+
+      console.log("Creating API key with payload:", payload);
 
       const response = await fetch(`/api/projects/${projectId}/api-keys`, {
         method: "POST",
@@ -171,10 +176,16 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to create API key: ${response.status}`);
+        const errorText = await response.text();
+        console.error("API response error:", errorText);
+        throw new Error(
+          `Failed to create API key: ${response.status} - ${errorText}`
+        );
       }
 
       const data = await response.json();
+      console.log("API key created successfully:", data);
+
       setNewApiKey(data.api_key); // Store the plain API key to show to the user
       fetchApiKeys(); // Refresh the list
     } catch (err) {
@@ -216,7 +227,15 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update API key: ${response.status}`);
+        let errorDetail;
+        try {
+          const errorResponse = await response.json();
+          errorDetail = errorResponse.detail || `Status: ${response.status}`;
+        } catch {
+          errorDetail = `Status: ${response.status}`;
+        }
+
+        throw new Error(`Failed to update API key: ${errorDetail}`);
       }
 
       fetchApiKeys(); // Refresh the list
@@ -404,6 +423,17 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
             </div>
           </div>
         </div>
+
+        {/* Create API Key Modal */}
+        <CreateAPIKeyModal
+          isOpen={isCreateModalOpen}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setNewApiKey(null);
+          }}
+          onCreate={handleCreateKey}
+          newApiKey={newApiKey}
+        />
       </div>
     );
   }

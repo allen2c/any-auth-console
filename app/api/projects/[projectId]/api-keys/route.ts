@@ -1,3 +1,4 @@
+// app/api/projects/[projectId]/api-keys/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { getToken } from "next-auth/jwt";
 import { APIKey, APIKeyCreate, Page } from "@/app/types/api";
@@ -74,6 +75,8 @@ export async function POST(
     // Get the request body
     const apiKeyData: APIKeyCreate = await request.json();
 
+    console.log("Creating API key with data:", apiKeyData);
+
     // Make request to backend API with session token
     const response = await fetch(
       `http://localhost:8000/projects/${projectId}/api-keys`,
@@ -88,12 +91,18 @@ export async function POST(
     );
 
     if (!response.ok) {
+      const responseText = await response.text();
+      console.error(
+        `API key creation failed with status ${response.status}:`,
+        responseText
+      );
+
       let errorDetail;
       try {
-        const errorResponse = await response.json();
+        const errorResponse = JSON.parse(responseText);
         errorDetail = errorResponse.detail || `Status: ${response.status}`;
       } catch {
-        errorDetail = `Status: ${response.status}`;
+        errorDetail = `Status: ${response.status} - ${responseText}`;
       }
 
       return NextResponse.json(
@@ -103,6 +112,13 @@ export async function POST(
     }
 
     const data = await response.json();
+    console.log("API key created successfully:", {
+      id: data.id,
+      name: data.name,
+      // Don't log the actual API key for security
+      hasApiKey: !!data.api_key,
+    });
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error creating API key:", error);

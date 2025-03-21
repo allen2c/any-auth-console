@@ -28,6 +28,7 @@ export default function APIKeyRolesPanel({
   const [searchQuery, setSearchQuery] = useState("");
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [roleAssignments, setRoleAssignments] = useState<RoleAssignment[]>([]);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const { data: session } = useSession();
 
   // Initialize selected roles when currentRoles changes
@@ -93,13 +94,23 @@ export default function APIKeyRolesPanel({
     if (!apiKey || !session?.accessToken) return;
 
     setIsUpdating(true);
+    setUpdateError(null);
+
     try {
-      // Prepare data for the API
-      const roleAssignmentUpdates = selectedRoleIds.map((roleId) => ({
-        role_id: roleId,
-        target_id: apiKey.id,
-        resource_id: projectId,
+      // Find role objects for the selected IDs
+      const selectedRoles = availableRoles.filter((roleObj) =>
+        selectedRoleIds.includes(roleObj.id)
+      );
+
+      // Prepare the correct payload format - array of objects with 'role' property
+      const roleAssignmentUpdates = selectedRoles.map((role) => ({
+        role: role.id, // This should be the role ID, not the full role object
       }));
+
+      console.log(
+        "Sending role assignments with payload:",
+        JSON.stringify(roleAssignmentUpdates)
+      );
 
       // Call the PUT endpoint to update roles
       const response = await fetch(
@@ -115,13 +126,20 @@ export default function APIKeyRolesPanel({
       );
 
       if (!response.ok) {
-        throw new Error(`Failed to update roles: ${response.status}`);
+        const errorText = await response.text();
+        console.error("API response error:", errorText);
+        throw new Error(
+          `Failed to update roles: ${response.status} - ${errorText}`
+        );
       }
 
       // Notify parent component to refresh roles
       onRolesUpdated();
     } catch (error) {
       console.error("Error updating roles:", error);
+      setUpdateError(
+        error instanceof Error ? error.message : "Failed to update roles"
+      );
     } finally {
       setIsUpdating(false);
     }
@@ -164,6 +182,30 @@ export default function APIKeyRolesPanel({
               {apiKey.description || "No description"}
             </p>
           </div>
+
+          {updateError && (
+            <div className="mb-4 bg-red-50 border-l-4 border-red-400 p-3">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg
+                    className="h-5 w-5 text-red-400"
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-700">{updateError}</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="flex items-center justify-between">

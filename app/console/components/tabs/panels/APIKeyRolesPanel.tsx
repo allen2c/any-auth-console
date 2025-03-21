@@ -135,6 +135,11 @@ export default function APIKeyRolesPanel({
 
       // Notify parent component to refresh roles
       onRolesUpdated();
+
+      // Close the panel after successful update
+      setTimeout(() => {
+        onClose();
+      }, 500); // Small delay to allow the parent to update
     } catch (error) {
       console.error("Error updating roles:", error);
       setUpdateError(

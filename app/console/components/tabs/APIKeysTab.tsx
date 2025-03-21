@@ -13,8 +13,15 @@ interface APIKeysTabProps {
   projectId: string;
 }
 
+// Interface to track API key roles
+interface APIKeyWithRoles extends APIKey {
+  roles?: Role[];
+  rolesLoading?: boolean;
+  rolesError?: string;
+}
+
 export default function APIKeysTab({ projectId }: APIKeysTabProps) {
-  const [apiKeys, setApiKeys] = useState<APIKey[]>([]);
+  const [apiKeys, setApiKeys] = useState<APIKeyWithRoles[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { data: session } = useSession();
@@ -28,6 +35,60 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
   const [newApiKey, setNewApiKey] = useState<string | null>(null);
   const [availableRoles, setAvailableRoles] = useState<Role[]>([]);
   const [apiKeyRoles, setApiKeyRoles] = useState<Role[]>([]);
+
+  // Fetch roles for a specific API key and update state
+  const fetchRolesForApiKey = useCallback(
+    async (apiKeyId: string) => {
+      if (!projectId || !session?.accessToken || !apiKeyId) return;
+
+      try {
+        const response = await fetch(
+          `/api/projects/${projectId}/api-keys/${apiKeyId}/roles`,
+          {
+            headers: {
+              Authorization: `Bearer ${session.accessToken}`,
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch API key roles: ${response.status}`);
+        }
+
+        const data: Page<Role> = await response.json();
+
+        // Update the state with the roles for this API key
+        setApiKeys((prevKeys) =>
+          prevKeys.map((key) =>
+            key.id === apiKeyId
+              ? { ...key, roles: data.data || [], rolesLoading: false }
+              : key
+          )
+        );
+
+        // If this is the current API key being edited, also update apiKeyRoles
+        if (currentApiKey && currentApiKey.id === apiKeyId) {
+          setApiKeyRoles(data.data || []);
+        }
+      } catch (err) {
+        console.error(`Error fetching roles for API key ${apiKeyId}:`, err);
+        // Update state to indicate error
+        setApiKeys((prevKeys) =>
+          prevKeys.map((key) =>
+            key.id === apiKeyId
+              ? {
+                  ...key,
+                  rolesLoading: false,
+                  rolesError:
+                    err instanceof Error ? err.message : "Failed to load roles",
+                }
+              : key
+          )
+        );
+      }
+    },
+    [projectId, session?.accessToken, currentApiKey]
+  );
 
   // Fetch API keys
   const fetchApiKeys = useCallback(async () => {
@@ -51,14 +112,26 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
       }
 
       const data: Page<APIKey> = await response.json();
-      setApiKeys(data.data || []);
+      // Initialize with roles array
+      const keysWithRoles = data.data.map((key) => ({
+        ...key,
+        roles: [],
+        rolesLoading: true,
+      }));
+
+      setApiKeys(keysWithRoles);
+
+      // After setting initial state, fetch roles for each API key
+      keysWithRoles.forEach((key) => {
+        fetchRolesForApiKey(key.id);
+      });
     } catch (err) {
       console.error("Error fetching API keys:", err);
       setError(err instanceof Error ? err.message : "Failed to load API keys");
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, session?.accessToken]);
+  }, [projectId, session?.accessToken, fetchRolesForApiKey]);
 
   // Fetch available roles
   const fetchAvailableRoles = useCallback(async () => {
@@ -81,34 +154,6 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
       console.error("Error fetching roles:", err);
     }
   }, [projectId, session?.accessToken]);
-
-  // Fetch roles for a specific API key
-  const fetchApiKeyRoles = useCallback(
-    async (apiKeyId: string) => {
-      if (!projectId || !session?.accessToken || !apiKeyId) return;
-
-      try {
-        const response = await fetch(
-          `/api/projects/${projectId}/api-keys/${apiKeyId}/roles`,
-          {
-            headers: {
-              Authorization: `Bearer ${session.accessToken}`,
-            },
-          }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch API key roles: ${response.status}`);
-        }
-
-        const data: Page<Role> = await response.json();
-        setApiKeyRoles(data.data || []);
-      } catch (err) {
-        console.error("Error fetching API key roles:", err);
-      }
-    },
-    [projectId, session?.accessToken]
-  );
 
   // Delete API key
   const deleteApiKey = async (apiKeyId: string) => {
@@ -250,7 +295,17 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
   // Handle manage roles click
   const handleManageRoles = (apiKey: APIKey) => {
     setCurrentApiKey(apiKey);
-    fetchApiKeyRoles(apiKey.id);
+
+    // Find the roles for this API key in our state
+    const keyWithRoles = apiKeys.find((k) => k.id === apiKey.id);
+    if (keyWithRoles && keyWithRoles.roles) {
+      setApiKeyRoles(keyWithRoles.roles);
+    } else {
+      setApiKeyRoles([]);
+      // Fetch roles if not already loaded
+      fetchRolesForApiKey(apiKey.id);
+    }
+
     setIsRolesPanelOpen(true);
   };
 
@@ -289,6 +344,11 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
     }
 
     return `Expires ${formatDistanceToNow(date, { addSuffix: true })}`;
+  };
+
+  // Handler for role updates
+  const handleRolesUpdated = (apiKeyId: string) => {
+    fetchRolesForApiKey(apiKeyId);
   };
 
   // Delete confirmation modal
@@ -504,6 +564,12 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
                 >
                   Status
                 </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Roles
+                </th>
                 <th scope="col" className="relative px-6 py-3">
                   <span className="sr-only">Actions</span>
                 </th>
@@ -556,6 +622,54 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
                     ) : (
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
                         Active
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {apiKey.rolesLoading ? (
+                      <div className="flex items-center">
+                        <svg
+                          className="animate-spin h-4 w-4 text-blue-500 mr-2"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                        <span className="text-xs text-gray-500">
+                          Loading...
+                        </span>
+                      </div>
+                    ) : apiKey.rolesError ? (
+                      <span className="text-xs text-red-500">
+                        Error loading roles
+                      </span>
+                    ) : apiKey.roles && apiKey.roles.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {apiKey.roles.map((role) => (
+                          <span
+                            key={role.id}
+                            className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800"
+                          >
+                            {role.name}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <span className="text-xs text-gray-500">
+                        No roles assigned
                       </span>
                     )}
                   </td>
@@ -658,7 +772,7 @@ export default function APIKeysTab({ projectId }: APIKeysTabProps) {
           availableRoles={availableRoles}
           currentRoles={apiKeyRoles}
           onRolesUpdated={() => {
-            fetchApiKeyRoles(currentApiKey.id);
+            handleRolesUpdated(currentApiKey.id);
           }}
         />
       )}

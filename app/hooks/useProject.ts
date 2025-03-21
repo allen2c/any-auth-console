@@ -9,7 +9,7 @@ export function useProject(projectId: string | null) {
   const [project, setProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   useEffect(() => {
     async function fetchProject() {
@@ -48,7 +48,7 @@ export function useProjects() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   useEffect(() => {
     async function fetchProjects() {

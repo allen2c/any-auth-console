@@ -17,7 +17,7 @@ export default function InviteDetailsPage({
 }: {
   params: { projectId: string };
 }) {
-  const { projectId } = await params;
+  const { projectId } = params;
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const router = useRouter();

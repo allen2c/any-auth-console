@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -14,6 +14,9 @@ export default function AcceptInviteClient({
   const token = searchParams.get("token");
   const router = useRouter();
   const { data: session, status } = useSession();
+
+  // Add a ref to track if we've already attempted to accept the invite
+  const acceptAttemptedRef = useRef(false);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,6 +45,14 @@ export default function AcceptInviteClient({
 
     // Now we're authenticated and have a token, accept the invite
     const acceptInvite = async () => {
+      // Only proceed if we haven't already attempted to accept the invite
+      if (acceptAttemptedRef.current) {
+        return;
+      }
+
+      // Mark that we've attempted to accept the invite
+      acceptAttemptedRef.current = true;
+
       setIsLoading(true);
       setError(null);
       try {

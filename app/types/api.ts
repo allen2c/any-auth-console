@@ -41,6 +41,37 @@ export interface ProjectCreate {
 }
 
 /**
+ * API Key entity interface matching backend model
+ */
+export interface APIKey {
+  id: string;
+  resource_id: string;
+  name: string;
+  description: string;
+  created_by: string;
+  created_at: number;
+  expires_at: number | null;
+}
+
+/**
+ * API Key creation request interface
+ */
+export interface APIKeyCreate {
+  name?: string;
+  description?: string;
+  expires_at?: number | null;
+}
+
+/**
+ * API Key update request interface
+ */
+export interface APIKeyUpdate {
+  name?: string;
+  description?: string;
+  expires_at?: number | null;
+}
+
+/**
  * Project member entity interface matching backend model
  */
 export interface ProjectMember {
@@ -78,7 +109,7 @@ export interface Role {
  */
 export interface RoleAssignment {
   id: string;
-  user_id: string;
+  target_id: string;
   role_id: string;
   resource_id: string;
   assigned_at: number;
@@ -88,7 +119,7 @@ export interface RoleAssignment {
  * Role assignment creation request interface
  */
 export interface RoleAssignmentCreate {
-  user_id: string;
+  target_id: string;
   role_id: string;
   resource_id: string;
 }

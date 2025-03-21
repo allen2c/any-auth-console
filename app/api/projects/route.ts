@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
     if (roleId && userId) {
       try {
         const roleAssignmentData: RoleAssignmentCreate = {
-          user_id: userId,
+          target_id: userId,
           role_id: roleId,
           resource_id: projectId,
         };

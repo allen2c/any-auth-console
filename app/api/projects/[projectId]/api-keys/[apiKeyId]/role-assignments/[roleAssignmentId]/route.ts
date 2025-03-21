@@ -10,7 +10,7 @@ export async function DELETE(
   }
 ): Promise<NextResponse<null | { error: string }>> {
   try {
-    const { projectId, apiKeyId, roleAssignmentId } = params;
+    const { projectId, apiKeyId, roleAssignmentId } = await params;
 
     // Get user's session token
     const token = await getToken({

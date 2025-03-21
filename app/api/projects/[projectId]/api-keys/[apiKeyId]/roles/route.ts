@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { projectId: string; apiKeyId: string } }
 ): Promise<NextResponse<Page<Role> | { error: string }>> {
   try {
-    const { projectId, apiKeyId } = params;
+    const { projectId, apiKeyId } = await params;
 
     // Get user's session token
     const token = await getToken({

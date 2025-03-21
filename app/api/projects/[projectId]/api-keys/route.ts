@@ -7,7 +7,7 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ): Promise<NextResponse<Page<APIKey> | { error: string }>> {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
     const searchParams = request.nextUrl.searchParams;
     const limit = searchParams.get("limit") || "20";
     const order = searchParams.get("order") || "desc";
@@ -59,7 +59,7 @@ export async function POST(
   { params }: { params: { projectId: string } }
 ): Promise<NextResponse<APIKey | { error: string }>> {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
 
     // Get user's session token
     const token = await getToken({

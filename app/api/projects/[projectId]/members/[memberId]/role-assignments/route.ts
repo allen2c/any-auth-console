@@ -55,7 +55,7 @@ export async function POST(
   { params }: { params: { projectId: string; memberId: string } }
 ) {
   try {
-    const { projectId, memberId } = params;
+    const { projectId, memberId } = await params;
 
     // Get user's session token
     const token = await getToken({

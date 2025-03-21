@@ -75,7 +75,7 @@ export async function GET(
   { params }: { params: { projectId: string } }
 ) {
   try {
-    const { projectId } = params;
+    const { projectId } = await params;
 
     // Get user's session token
     const token = await getToken({

@@ -42,7 +42,11 @@ export async function fetchJwtToken(
       console.error(
         `Backend token fetch failed with status: ${response.status}`
       );
-      throw new Error(`Backend returned status: ${response.status}`);
+      throw new Error(
+        `Backend returned status: ${
+          response.status
+        }, response: ${await response.text()}`
+      );
     }
 
     return await response.json();

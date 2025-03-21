@@ -7,7 +7,7 @@ export async function DELETE(
   { params }: { params: { projectId: string; inviteId: string } }
 ) {
   try {
-    const { projectId, inviteId } = params;
+    const { projectId, inviteId } = await params;
 
     // Get user's session token
     const token = await getToken({

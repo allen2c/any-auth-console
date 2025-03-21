@@ -39,11 +39,14 @@ export async function createUser(
     // Extract the part before @ for full_name and username base
     const emailName = email.split("@")[0];
 
+    // Clean the emailName to keep only valid characters (alphanumeric, underscore, hyphen)
+    const cleanEmailName = emailName.replace(/[^a-zA-Z0-9_-]/g, "");
+
     // Generate a random string for username suffix (alphanumeric)
     const randomSuffix = Math.random().toString(36).substring(2, 8);
 
     // Create username by combining email name and random suffix
-    const username = `${emailName}_${randomSuffix}`;
+    const username = `${cleanEmailName}_${randomSuffix}`;
 
     // Generate a secure password
     const password = generateSecurePassword();

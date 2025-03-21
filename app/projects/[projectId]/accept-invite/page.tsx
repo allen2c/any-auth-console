@@ -10,7 +10,7 @@ export default function AcceptInvitePage({
 }: {
   params: { projectId: string };
 }) {
-  const { projectId } = params;
+  const { projectId } = await params;
   const searchParams = useSearchParams();
   const token = searchParams.get("token");
   const router = useRouter();

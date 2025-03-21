@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { loginWithCredentials } from "../services/auth";
 
@@ -12,6 +12,16 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const callbackUrl = searchParams.get("callbackUrl") || "/console";
+
+  // If this is an email from an invite, pre-populate the email field
+  const email = searchParams.get("email");
+  useEffect(() => {
+    if (email) {
+      setEmailOrUsername(email);
+    }
+  }, [email]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,15 +46,25 @@ export default function Login() {
         accessToken: tokenResponse.access_token,
         refreshToken: tokenResponse.refresh_token,
         accessTokenExpires: Date.now() + tokenResponse.expires_in * 1000,
-        callbackUrl: "/console",
+        callbackUrl: callbackUrl,
       });
 
       if (result?.error) {
         throw new Error(result.error);
       }
 
-      // Redirect to console
-      router.push("/console");
+      // If there's a callbackUrl, redirect there, otherwise to console
+      if (callbackUrl) {
+        try {
+          const decodedUrl = decodeURIComponent(callbackUrl);
+          router.push(decodedUrl);
+        } catch (error) {
+          console.error("Error redirecting to callback URL:", error);
+          router.push("/console");
+        }
+      } else {
+        router.push("/console");
+      }
     } catch (error) {
       console.error("Login failed:", error);
 
@@ -64,7 +84,7 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl: "/console" });
+      await signIn("google", { callbackUrl });
     } catch (error) {
       console.error("Login failed:", error);
       setIsLoading(false);
@@ -77,6 +97,11 @@ export default function Login() {
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           Sign in to AnyAuth Console
         </h2>
+        {callbackUrl && callbackUrl !== "/console" && (
+          <p className="mt-2 text-center text-sm text-blue-600">
+            Sign in to continue to your destination
+          </p>
+        )}
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
@@ -277,4 +302,3 @@ export default function Login() {
       </div>
     </div>
   );
-}

@@ -84,7 +84,10 @@ export default function Login() {
   const handleGoogleSignIn = async () => {
     setIsLoading(true);
     try {
-      await signIn("google", { callbackUrl });
+      // The callbackUrl will be automatically picked up by the redirect callback
+      await signIn("google", {
+        callbackUrl: searchParams.get("callbackUrl") || "/console",
+      });
     } catch (error) {
       console.error("Login failed:", error);
       setIsLoading(false);

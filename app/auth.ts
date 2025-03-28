@@ -38,6 +38,7 @@ export const authConfig: NextAuthConfig = {
     error: "/login/error",
   },
   callbacks: {
+    // Handle authorization logic only in signIn
     async signIn({ user, account }) {
       // Only run this for Google provider
       if (account?.provider === "google" && user.email) {
@@ -52,15 +53,40 @@ export const authConfig: NextAuthConfig = {
           });
 
           // If we get here, the token was successfully obtained
-          return true;
+          return true; // Allow sign-in to proceed
         } catch (error) {
           console.error("Error obtaining token from backend:", error);
-          return false; // Deny sign in if token fetch fails
+          return false; // Deny sign-in if token fetch fails
         }
       }
 
       // Allow sign in for other providers or if no email
       return true;
+    },
+
+    // Handle redirection logic in redirect callback
+    async redirect({ url, baseUrl }) {
+      // Define trusted external domains that are allowed for redirects
+      const trustedDomains = [
+        "http://localhost:3010",
+        // Add other trusted domains here as needed
+      ];
+
+      console.log("Redirecting to:", url);
+
+      // Check if the URL is relative (starts with /)
+      if (url.startsWith("/")) {
+        // For relative URLs, redirect to the same origin
+        return `${baseUrl}${url}`;
+      }
+      // Check if URL is in our trusted domains list
+      else if (trustedDomains.some((domain) => url.startsWith(domain))) {
+        // For trusted external domains, redirect directly to the full URL
+        return url;
+      }
+
+      // Default to base URL for all other cases
+      return baseUrl;
     },
 
     async jwt({ token, user, account }) {

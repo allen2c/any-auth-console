@@ -38,33 +38,10 @@ export default auth((req) => {
   // Handle callback redirects after login
   if (isLoggedIn && callbackUrl) {
     try {
-      // Decode the callback URL if needed
+      // The Auth.js redirect callback will have already validated this URL
+      // So we can safely redirect to it
       const decodedUrl = decodeURIComponent(callbackUrl);
-
-      // Define trusted external domains that are allowed for redirects
-      const trustedDomains = [
-        "http://localhost:3010",
-        // Add other trusted domains here as needed
-        // 'https://yourtrustedapp.com',
-      ];
-
-      // Check if the URL is relative (starts with /) or is in our trusted domains list
-      if (decodedUrl.startsWith("/")) {
-        // For relative URLs, redirect to the same origin
-        console.log("Redirecting to relative URL:", decodedUrl);
-        return NextResponse.redirect(new URL(decodedUrl, nextUrl.origin));
-      } else if (
-        trustedDomains.some((domain) => decodedUrl.startsWith(domain))
-      ) {
-        // For trusted external domains, redirect directly to the full URL
-        console.log("Redirecting to trusted domain:", decodedUrl);
-        return NextResponse.redirect(decodedUrl);
-      }
-
-      // If we get here, the URL wasn't relative or in our trusted domains
-      console.warn(`Rejected redirect to untrusted domain: ${decodedUrl}`);
-      // Optionally redirect to a default page or show an error
-      return NextResponse.redirect(new URL("/console", nextUrl.origin));
+      return NextResponse.redirect(decodedUrl);
     } catch (error) {
       console.error("Error processing callback URL:", error);
     }

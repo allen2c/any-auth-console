@@ -10,7 +10,8 @@ export default auth((req) => {
     nextUrl.pathname === "/" ||
     nextUrl.pathname === "/login" ||
     nextUrl.pathname === "/signup" ||
-    nextUrl.pathname.startsWith("/api/auth");
+    nextUrl.pathname.startsWith("/api/auth") ||
+    nextUrl.pathname.startsWith("/api/me");
 
   // Check if this is an accept-invite path
   const isAcceptInvitePath = nextUrl.pathname.includes("/accept-invite");

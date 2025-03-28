@@ -11,6 +11,13 @@ export const authConfig: NextAuthConfig = {
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+      authorization: {
+        params: {
+          prompt: "consent",
+          access_type: "offline",
+          response_type: "code",
+        },
+      },
     }),
     CredentialsProvider({
       id: "credentials",
@@ -66,26 +73,38 @@ export const authConfig: NextAuthConfig = {
 
     // Handle redirection logic in redirect callback
     async redirect({ url, baseUrl }) {
+      console.log("Auth redirect triggered with URL:", url);
+
       // Define trusted external domains that are allowed for redirects
       const trustedDomains = [
         "http://localhost:3010",
         // Add other trusted domains here as needed
       ];
 
-      console.log("Redirecting to:", url);
-
       // Check if the URL is relative (starts with /)
       if (url.startsWith("/")) {
-        // For relative URLs, redirect to the same origin
+        console.log("Redirecting to relative URL:", `${baseUrl}${url}`);
         return `${baseUrl}${url}`;
       }
+
       // Check if URL is in our trusted domains list
       else if (trustedDomains.some((domain) => url.startsWith(domain))) {
-        // For trusted external domains, redirect directly to the full URL
+        // For AnyChat callbacks, use our redirect API to add tokens
+        if (url.includes("localhost:3010") && url.includes("/auth/callback")) {
+          const redirectUrl = `${baseUrl}/api/auth/redirect?callbackUrl=${encodeURIComponent(
+            url
+          )}`;
+          console.log("Redirecting to AnyChat with tokens:", redirectUrl);
+          return redirectUrl;
+        }
+
+        // For other trusted domains, redirect directly
+        console.log("Redirecting to trusted external domain:", url);
         return url;
       }
 
       // Default to base URL for all other cases
+      console.log("Redirecting to default baseUrl:", baseUrl);
       return baseUrl;
     },
 

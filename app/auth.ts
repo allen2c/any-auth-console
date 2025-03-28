@@ -81,6 +81,12 @@ export const authConfig: NextAuthConfig = {
         // Add other trusted domains here as needed
       ];
 
+      // Special case - if this is our redirect API, let it handle the redirect
+      if (url.startsWith(`${baseUrl}/api/auth/redirect`)) {
+        console.log("Using redirect API:", url);
+        return url;
+      }
+
       // Check if the URL is relative (starts with /)
       if (url.startsWith("/")) {
         console.log("Redirecting to relative URL:", `${baseUrl}${url}`);

@@ -2,9 +2,8 @@
 
 import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
-import CredentialsProvider from "next-auth/providers/credentials";
 import { NextAuthConfig } from "next-auth";
-import { fetchJwtToken, refreshJwtToken } from "./services/auth"; // Updated import
+import { fetchJwtToken, refreshJwtToken } from "./services/auth";
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -17,26 +16,6 @@ export const authConfig: NextAuthConfig = {
           access_type: "offline",
           response_type: "code",
         },
-      },
-    }),
-    CredentialsProvider({
-      id: "credentials",
-      name: "Credentials",
-      credentials: {
-        accessToken: { label: "Access Token", type: "text" },
-        refreshToken: { label: "Refresh Token", type: "text" },
-        accessTokenExpires: { label: "Token Expiry", type: "text" },
-      },
-      async authorize(credentials) {
-        if (!credentials?.accessToken) return null;
-
-        // Return the credentials directly to be stored in the JWT
-        return {
-          id: "user-id", // Will be updated in the jwt callback
-          accessToken: credentials.accessToken,
-          refreshToken: credentials.refreshToken,
-          accessTokenExpires: credentials.accessTokenExpires,
-        };
       },
     }),
   ],

@@ -32,11 +32,12 @@ export default function LoginErrorPage() {
               </svg>
             </div>
             <h3 className="mt-4 text-lg font-medium text-gray-900">
-              Account not found
+              Authentication Failed
             </h3>
             <p className="mt-2 text-sm text-gray-500">
-              The email you&apos;re trying to log in with doesn&apos;t exist in
-              our system.
+              We couldn&apos;t sign you in with your provider. This could be due
+              to an account not being registered yet or an issue with your
+              authentication provider.
             </p>
             <div className="mt-6 flex space-x-4 justify-center">
               <Link

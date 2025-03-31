@@ -61,12 +61,12 @@ export function useAuthApi(options: UseAuthApiOptions = {}) {
         ) {
           console.log("Refresh token has expired, redirecting to login...");
 
-          // Always redirect to login for expired tokens
-          signIn();
+          // Redirect to OAuth login
+          signIn("google");
         } else if (options.redirectToLogin) {
           // For other errors, follow the option setting
           console.log("Redirecting to login page due to refresh error...");
-          signIn();
+          signIn("google");
         }
 
         throw error;
@@ -88,7 +88,7 @@ export function useAuthApi(options: UseAuthApiOptions = {}) {
     async (url: string, fetchOptions: RequestInit = {}) => {
       if (options.requireAuth !== false && !session?.accessToken) {
         if (options.redirectToLogin) {
-          signIn();
+          signIn("google");
         }
         throw new Error("Authentication required");
       }

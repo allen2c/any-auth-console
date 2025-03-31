@@ -24,7 +24,7 @@ export const authConfig: NextAuthConfig = {
     error: "/login/error",
   },
   callbacks: {
-    // Handle authorization logic only in signIn
+    // Step 1: Handle authorization logic only in signIn
     async signIn({ user, account }) {
       // Only run this for Google provider
       if (account?.provider === "google" && user.email) {
@@ -50,49 +50,7 @@ export const authConfig: NextAuthConfig = {
       return true;
     },
 
-    // Handle redirection logic in redirect callback
-    async redirect({ url, baseUrl }) {
-      console.log("Auth redirect triggered with URL:", url);
-
-      // Define trusted external domains that are allowed for redirects
-      const trustedDomains = [
-        "http://localhost:3010",
-        // Add other trusted domains here as needed
-      ];
-
-      // Special case - if this is our redirect API, let it handle the redirect
-      if (url.startsWith(`${baseUrl}/api/auth/redirect`)) {
-        console.log("Using redirect API:", url);
-        return url;
-      }
-
-      // Check if the URL is relative (starts with /)
-      if (url.startsWith("/")) {
-        console.log("Redirecting to relative URL:", `${baseUrl}${url}`);
-        return `${baseUrl}${url}`;
-      }
-
-      // Check if URL is in our trusted domains list
-      else if (trustedDomains.some((domain) => url.startsWith(domain))) {
-        // For AnyChat callbacks, use our redirect API to add tokens
-        if (url.includes("localhost:3010") && url.includes("/auth/callback")) {
-          const redirectUrl = `${baseUrl}/api/auth/redirect?callbackUrl=${encodeURIComponent(
-            url
-          )}`;
-          console.log("Redirecting to AnyChat with tokens:", redirectUrl);
-          return redirectUrl;
-        }
-
-        // For other trusted domains, redirect directly
-        console.log("Redirecting to trusted external domain:", url);
-        return url;
-      }
-
-      // Default to base URL for all other cases
-      console.log("Redirecting to default baseUrl:", baseUrl);
-      return baseUrl;
-    },
-
+    // Step 2: Handle JWT token generation
     async jwt({ token, user, account }) {
       // Initial sign in
       if (account && user) {
@@ -169,6 +127,7 @@ export const authConfig: NextAuthConfig = {
       return token;
     },
 
+    // Step 3: Handle session creation
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.id as string;
@@ -180,6 +139,50 @@ export const authConfig: NextAuthConfig = {
       return session;
     },
 
+    // Step 4: Handle redirection logic in redirect callback
+    async redirect({ url, baseUrl }) {
+      console.log("Auth redirect triggered with URL:", url);
+
+      // Define trusted external domains that are allowed for redirects
+      const trustedDomains = [
+        "http://localhost:3010",
+        // Add other trusted domains here as needed
+      ];
+
+      // Special case - if this is our redirect API, let it handle the redirect
+      if (url.startsWith(`${baseUrl}/api/auth/redirect`)) {
+        console.log("Using redirect API:", url);
+        return url;
+      }
+
+      // Check if the URL is relative (starts with /)
+      if (url.startsWith("/")) {
+        console.log("Redirecting to relative URL:", `${baseUrl}${url}`);
+        return `${baseUrl}${url}`;
+      }
+
+      // Check if URL is in our trusted domains list
+      else if (trustedDomains.some((domain) => url.startsWith(domain))) {
+        // For AnyChat callbacks, use our redirect API to add tokens
+        if (url.includes("localhost:3010") && url.includes("/auth/callback")) {
+          const redirectUrl = `${baseUrl}/api/auth/redirect?callbackUrl=${encodeURIComponent(
+            url
+          )}`;
+          console.log("Redirecting to AnyChat with tokens:", redirectUrl);
+          return redirectUrl;
+        }
+
+        // For other trusted domains, redirect directly
+        console.log("Redirecting to trusted external domain:", url);
+        return url;
+      }
+
+      // Default to base URL for all other cases
+      console.log("Redirecting to default baseUrl:", baseUrl);
+      return baseUrl;
+    },
+
+    // Step 5: Handle authorization logic in authorized callback
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
       const isOnConsole = nextUrl.pathname.startsWith("/console");

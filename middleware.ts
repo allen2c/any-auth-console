@@ -1,3 +1,4 @@
+// middleware.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/app/auth";
 
@@ -48,10 +49,12 @@ export default auth((req) => {
     }
   }
 
-  // Redirect to console if accessing login page while already logged in
+  // Redirect to console if accessing login page or root path while already logged in
   if (
     isLoggedIn &&
-    (nextUrl.pathname === "/login" || nextUrl.pathname === "/signup") &&
+    (nextUrl.pathname === "/" ||
+      nextUrl.pathname === "/login" ||
+      nextUrl.pathname === "/signup") &&
     !callbackUrl
   ) {
     return NextResponse.redirect(new URL("/console", nextUrl));

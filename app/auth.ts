@@ -163,16 +163,10 @@ export const authConfig: NextAuthConfig = {
 
       // Check if URL is in our trusted domains list
       else if (trustedDomains.some((domain) => url.startsWith(domain))) {
-        // For AnyChat callbacks, use our redirect API to add tokens
-        if (url.includes("localhost:3010") && url.includes("/auth/callback")) {
-          const redirectUrl = `${baseUrl}/api/auth/redirect?callbackUrl=${encodeURIComponent(
-            url
-          )}`;
-          console.log("Redirecting to AnyChat with tokens:", redirectUrl);
-          return redirectUrl;
-        }
-
-        // For other trusted domains, redirect directly
+        // For trusted cross-domain callbacks, allow redirection
+        // This ensures that only URLs from trusted domains are processed
+        // Prevents potential security risks from untrusted redirects
+        // Log the redirection for monitoring purposes
         console.log("Redirecting to trusted external domain:", url);
         return url;
       }

@@ -49,6 +49,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Validate redirect_uri if provided
+    console.log("");
+    console.log("");
+    console.log(
+      `redirect_uri: ${redirect_uri}, codeData.redirectUri: ${codeData.redirectUri}`
+    );
+    console.log("");
+    console.log("");
     if (redirect_uri && codeData.redirectUri !== redirect_uri) {
       return NextResponse.json(
         {

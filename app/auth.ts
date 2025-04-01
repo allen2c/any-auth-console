@@ -4,26 +4,23 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth";
-import { getSession } from "next-auth/react";
 
-// Simple in-memory store for authorization codes
-// In production, use a database
-export const authorizationCodes = new Map();
+// Define an interface for the authorization code structure
+interface AuthorizationCode {
+  redirectUri: string;
+  expiresAt: number;
+}
+
+// Update the typing of authorizationCodes
+export const authorizationCodes: Map<string, AuthorizationCode> = new Map();
 
 // Store an authorization code
-function storeAuthorizationCode(
-  code: string,
-  userId: string,
-  clientId: string,
-  redirectUri: string
-) {
+function storeAuthorizationCode(code: string, redirectUri: string) {
   authorizationCodes.set(code, {
-    userId,
-    clientId,
     redirectUri,
     expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes expiration
   });
-  console.log(`Stored authorization code for user ${userId}`);
+  console.log(`Stored authorization code for user ${redirectUri}`);
 }
 
 // Generate a secure random string for authorization codes
@@ -162,9 +159,7 @@ export const authConfig: NextAuthConfig = {
     // Step 3: Handle session creation
     async session({ session, token }) {
       if (session.user) {
-        session.user.id = token.id as string;
         session.accessToken = token.accessToken as string;
-        // Add additional fields if needed
         session.refreshToken = token.refreshToken as string;
         session.accessTokenExpires = token.accessTokenExpires as number;
       }
@@ -173,39 +168,15 @@ export const authConfig: NextAuthConfig = {
 
     // Step 4: Handle redirection logic in redirect callback
     async redirect({ url, baseUrl }) {
-      console.log("Auth redirect triggered with URL:", url);
-
-      // Check if the URL is valid
-      if (!url || typeof url !== "string" || !url.startsWith("http")) {
-        console.error("Invalid URL provided:", url);
-        return baseUrl;
-      }
-
-      // Parse the URL to extract parameters
-      const urlObj = new URL(url);
-
-      // Check if this URL has a redirect_uri parameter (from OAuth flow)
-      const redirectUri = urlObj.searchParams.get("redirect_uri");
-      if (redirectUri) {
-        console.log("Found redirect_uri parameter:", redirectUri);
-        // Store it as callbackUrl for NextAuth to use
-        urlObj.searchParams.set("callbackUrl", redirectUri);
-        urlObj.searchParams.delete("redirect_uri");
-        url = urlObj.toString();
-        console.log("Updated URL with callbackUrl:", url);
-      }
+      console.log(
+        `Auth redirect triggered with URL: ${url}, baseUrl: ${baseUrl}`
+      );
 
       // Define trusted external domains that are allowed for redirects
       const trustedDomains = [
         "http://localhost:3010",
         // Add other trusted domains here as needed
       ];
-
-      // Special case - if this is our redirect API, let it handle the redirect
-      if (url.startsWith(`${baseUrl}/api/auth/redirect`)) {
-        console.log("Using redirect API:", url);
-        return url;
-      }
 
       // Check if the URL is relative (starts with /)
       if (url.startsWith("/")) {
@@ -217,27 +188,15 @@ export const authConfig: NextAuthConfig = {
       else if (trustedDomains.some((domain) => url.startsWith(domain))) {
         // For trusted cross-domain callbacks, allow redirection
         try {
-          const session = await getSession();
-          if (!session || !session.user || !session.user.id) {
-            console.error("Cannot redirect: User ID is missing from session");
-            return baseUrl; // Redirect to home if no user ID
-          }
-
-          const userId = session.user.id;
-
           // Generate a secure authorization code
           const authCode = generateAuthCode();
 
           // Store the code with the user ID and original redirect URI
-          storeAuthorizationCode(authCode, userId, "anychat_client", url);
+          storeAuthorizationCode(authCode, url);
 
           // Create the final redirect URL with the code
           const redirectUrl = new URL(url);
           redirectUrl.searchParams.set("code", authCode);
-
-          // Add state parameter if needed for CSRF protection
-          const state = generateAuthCode();
-          redirectUrl.searchParams.set("state", state);
 
           console.log(
             "Redirecting to trusted external domain with code:",

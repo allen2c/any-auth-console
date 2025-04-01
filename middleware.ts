@@ -18,7 +18,8 @@ export default auth((req) => {
   const isAcceptInvitePath = nextUrl.pathname.includes("/accept-invite");
 
   // Get callback URL if specified (for redirecting back after login)
-  const callbackUrl = nextUrl.searchParams.get("callbackUrl");
+  const redirectUri = nextUrl.searchParams.get("redirect_uri");
+  const callbackUrl = redirectUri || nextUrl.searchParams.get("callbackUrl");
 
   // Redirect to login if trying to access a protected route while not logged in
   if (!isPublicPath && !isLoggedIn) {

@@ -4,6 +4,36 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth";
+import { getSession } from "next-auth/react";
+
+// Simple in-memory store for authorization codes
+// In production, use a database
+export const authorizationCodes = new Map();
+
+// Store an authorization code
+function storeAuthorizationCode(
+  code: string,
+  userId: string,
+  clientId: string,
+  redirectUri: string
+) {
+  authorizationCodes.set(code, {
+    userId,
+    clientId,
+    redirectUri,
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes expiration
+  });
+  console.log(`Stored authorization code for user ${userId}`);
+}
+
+// Generate a secure random string for authorization codes
+function generateAuthCode() {
+  const array = new Uint8Array(16);
+  crypto.getRandomValues(array); // Use Web Crypto API to generate random values
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  ); // Convert to hex string
+}
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -19,10 +49,12 @@ export const authConfig: NextAuthConfig = {
       },
     }),
   ],
+
   pages: {
     signIn: "/login",
     error: "/login/error",
   },
+
   callbacks: {
     // Step 1: Handle authorization logic only in signIn
     async signIn({ user, account }) {
@@ -143,6 +175,26 @@ export const authConfig: NextAuthConfig = {
     async redirect({ url, baseUrl }) {
       console.log("Auth redirect triggered with URL:", url);
 
+      // Check if the URL is valid
+      if (!url || typeof url !== "string" || !url.startsWith("http")) {
+        console.error("Invalid URL provided:", url);
+        return baseUrl;
+      }
+
+      // Parse the URL to extract parameters
+      const urlObj = new URL(url);
+
+      // Check if this URL has a redirect_uri parameter (from OAuth flow)
+      const redirectUri = urlObj.searchParams.get("redirect_uri");
+      if (redirectUri) {
+        console.log("Found redirect_uri parameter:", redirectUri);
+        // Store it as callbackUrl for NextAuth to use
+        urlObj.searchParams.set("callbackUrl", redirectUri);
+        urlObj.searchParams.delete("redirect_uri");
+        url = urlObj.toString();
+        console.log("Updated URL with callbackUrl:", url);
+      }
+
       // Define trusted external domains that are allowed for redirects
       const trustedDomains = [
         "http://localhost:3010",
@@ -164,11 +216,39 @@ export const authConfig: NextAuthConfig = {
       // Check if URL is in our trusted domains list
       else if (trustedDomains.some((domain) => url.startsWith(domain))) {
         // For trusted cross-domain callbacks, allow redirection
-        // This ensures that only URLs from trusted domains are processed
-        // Prevents potential security risks from untrusted redirects
-        // Log the redirection for monitoring purposes
-        console.log("Redirecting to trusted external domain:", url);
-        return url;
+        try {
+          const session = await getSession();
+          if (!session || !session.user || !session.user.id) {
+            console.error("Cannot redirect: User ID is missing from session");
+            return baseUrl; // Redirect to home if no user ID
+          }
+
+          const userId = session.user.id;
+
+          // Generate a secure authorization code
+          const authCode = generateAuthCode();
+
+          // Store the code with the user ID and original redirect URI
+          storeAuthorizationCode(authCode, userId, "anychat_client", url);
+
+          // Create the final redirect URL with the code
+          const redirectUrl = new URL(url);
+          redirectUrl.searchParams.set("code", authCode);
+
+          // Add state parameter if needed for CSRF protection
+          const state = generateAuthCode();
+          redirectUrl.searchParams.set("state", state);
+
+          console.log(
+            "Redirecting to trusted external domain with code:",
+            redirectUrl.toString()
+          );
+
+          return redirectUrl.toString();
+        } catch (error) {
+          console.error("Error in redirect callback:", error);
+          return baseUrl; // Fallback to home page on error
+        }
       }
 
       // Default to base URL for all other cases

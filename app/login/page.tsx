@@ -4,50 +4,20 @@ import Link from "next/link";
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
-import { storeAuthorizationCode } from "@/app/api/auth/token/route";
-
-function handleSuccessfulLogin(
-  user: User,
-  clientId: string,
-  redirectUri: string,
-  state: string
-) {
-  // Generate a random authorization code
-  const authCode = generateRandomString(32);
-
-  // Store the authorization code with user association
-  storeAuthorizationCode(authCode, user.id, clientId);
-
-  // Construct the callback URL with the authorization code
-  const callbackUrl = new URL(redirectUri);
-  callbackUrl.searchParams.append("code", authCode);
-
-  // Include the state for CSRF protection
-  if (state) {
-    callbackUrl.searchParams.append("state", state);
-  }
-
-  // Redirect the user back to the client application
-  window.location.href = callbackUrl.toString();
-}
-
-// Helper function to generate a random string
-function generateRandomString(length: number) {
-  const charset =
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-  let result = "";
-  for (let i = 0; i < length; i++) {
-    const randomIndex = Math.floor(Math.random() * charset.length);
-    result += charset[randomIndex];
-  }
-  return result;
-}
 
 export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/console";
+  // First check for redirect_uri (OAuth standard), fall back to callbackUrl (Next Auth)
+  const redirectUri = searchParams.get("redirect_uri");
+  const callbackUrl =
+    redirectUri || searchParams.get("callbackUrl") || "/console";
+  console.log("Received parameters:", {
+    redirectUri: searchParams.get("redirect_uri"),
+    callbackUrl: searchParams.get("callbackUrl"),
+  });
+  console.log("Using callback URL:", callbackUrl);
 
   // If this is an email from an invite, we'll still use it for context
   const email = searchParams.get("email");
@@ -57,7 +27,7 @@ export default function Login() {
     try {
       // The callbackUrl will be automatically picked up by the redirect callback
       await signIn("google", {
-        callbackUrl: searchParams.get("callbackUrl") || "/console",
+        callbackUrl: callbackUrl,
       });
     } catch (error) {
       console.error("Login failed:", error);

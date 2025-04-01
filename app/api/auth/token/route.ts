@@ -1,23 +1,16 @@
-// app/api/auth/token/route.ts
-import { NextRequest, NextResponse } from "next/server";
-import { createJwtToken } from "@/app/utils/jwt";
+// In app/api/auth/token/route.ts of AnyAuth
 
-// In-memory storage for authorization codes (in a real app, use a database)
-const authorizationCodes = new Map<
-  string,
-  {
-    userId: string;
-    clientId: string;
-    expiresAt: number;
-  }
->();
+import { NextRequest, NextResponse } from "next/server";
+import { authorizationCodes } from "@/app/auth";
+import { createJwtToken } from "@/app/utils/jwt";
 
 export async function POST(request: NextRequest) {
   try {
+    // Get code from request body
     const body = await request.json();
     const { grant_type, code, redirect_uri } = body;
 
-    // Validate request
+    // Validate request parameters
     if (grant_type !== "authorization_code") {
       return NextResponse.json(
         { error: "unsupported_grant_type" },
@@ -32,10 +25,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Retrieve and validate the stored authorization code
-    const codeDetails = authorizationCodes.get(code);
+    // Get the stored code data
+    const codeData = authorizationCodes.get(code);
 
-    if (!codeDetails) {
+    // Validate the code
+    if (!codeData) {
       return NextResponse.json(
         {
           error: "invalid_grant",
@@ -45,7 +39,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (codeDetails.expiresAt < Date.now()) {
+    // Check if code is expired
+    if (codeData.expiresAt < Date.now()) {
       authorizationCodes.delete(code);
       return NextResponse.json(
         { error: "invalid_grant", error_description: "Code has expired" },
@@ -53,17 +48,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate redirect_uri if provided
+    if (redirect_uri && codeData.redirectUri !== redirect_uri) {
+      return NextResponse.json(
+        {
+          error: "invalid_grant",
+          error_description: "Redirect URI does not match",
+        },
+        { status: 400 }
+      );
+    }
+
+    // Check if we have a user ID (REQUIRED)
+    if (!codeData.userId) {
+      return NextResponse.json(
+        {
+          error: "server_error",
+          error_description: "User ID is missing",
+        },
+        { status: 500 }
+      );
+    }
+
     // Delete the code (one-time use)
     authorizationCodes.delete(code);
 
-    // In a real implementation, we would validate the client and redirect_uri here
-
-    // For demo purposes, get the user from the stored code details
-    const userId = codeDetails.userId;
-
     // Generate access and refresh tokens
-    const accessToken = createJwtToken(userId, 15 * 60); // 15 minutes
-    const refreshToken = createJwtToken(userId, 7 * 24 * 60 * 60); // 7 days
+    const accessToken = createJwtToken(codeData.userId, 15 * 60); // 15 minutes
+    const refreshToken = createJwtToken(codeData.userId, 7 * 24 * 60 * 60); // 7 days
 
     // Return the tokens
     return NextResponse.json({
@@ -76,17 +88,4 @@ export async function POST(request: NextRequest) {
     console.error("Error in token endpoint:", error);
     return NextResponse.json({ error: "server_error" }, { status: 500 });
   }
-}
-
-// Helper function to store authorization codes (would be called from login route)
-export function storeAuthorizationCode(
-  code: string,
-  userId: string,
-  clientId: string
-) {
-  authorizationCodes.set(code, {
-    userId,
-    clientId,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
-  });
 }

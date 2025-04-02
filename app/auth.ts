@@ -5,7 +5,6 @@ import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth";
 import { decodeJwtToken } from "./utils/jwt";
-import { generateAuthCode, storeAuthorizationCode } from "@/app/utils/auth";
 
 export const authConfig: NextAuthConfig = {
   providers: [

@@ -145,17 +145,16 @@ export const authConfig: NextAuthConfig = {
           const refreshedTokens = await refreshJwtToken(
             token.refreshToken as string
           );
+          const decodedPayload = decodeJwtToken(refreshedTokens.access_token);
 
           console.log("Token refresh successful!");
-
-          // Store the new token expiration time
-          const newExpiryTime = Date.now() + refreshedTokens.expires_in * 1000;
 
           return {
             ...token,
             accessToken: refreshedTokens.access_token,
             refreshToken: refreshedTokens.refresh_token,
-            accessTokenExpires: newExpiryTime,
+            accessTokenIssuedAt: decodedPayload.iat * 1000,
+            accessTokenExpires: decodedPayload.exp * 1000,
           };
         } catch (error) {
           console.error("Error refreshing token:", error);
@@ -173,7 +172,9 @@ export const authConfig: NextAuthConfig = {
 
     // Step 3: Handle session creation
     async session({ session, token }) {
-      if (session.user) {
+      if (token.id) {
+        // Use token.id to set userId
+        session.userId = token.id; // Set userId to session
         session.accessToken = token.accessToken as string;
         session.refreshToken = token.refreshToken as string;
         session.accessTokenExpires = token.accessTokenExpires as number;
@@ -207,7 +208,7 @@ export const authConfig: NextAuthConfig = {
           const authCode = generateAuthCode();
 
           // Store the code with the user ID and original redirect URI
-          storeAuthorizationCode(authCode, url);
+          storeAuthorizationCode(authCode, url, userId);
 
           // Create the final redirect URL with the code
           const redirectUrl = new URL(url);

@@ -5,39 +5,7 @@ import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth";
 import { decodeJwtToken } from "./utils/jwt";
-
-// Define an interface for the authorization code structure
-interface AuthorizationCode {
-  userId: string;
-  redirectUri: string;
-  expiresAt: number;
-}
-
-// Update the typing of authorizationCodes
-export const authorizationCodes: Map<string, AuthorizationCode> = new Map();
-
-// Store an authorization code
-function storeAuthorizationCode(
-  code: string,
-  redirectUri: string,
-  userId: string
-) {
-  authorizationCodes.set(code, {
-    redirectUri,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes expiration for the code
-    userId,
-  });
-  console.log(`Stored authorization code for user ${redirectUri}`);
-}
-
-// Generate a secure random string for authorization codes
-function generateAuthCode() {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array); // Use Web Crypto API to generate random values
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
-    ""
-  ); // Convert to hex string
-}
+import { generateAuthCode, storeAuthorizationCode } from "@/app/utils/auth";
 
 export const authConfig: NextAuthConfig = {
   providers: [
@@ -188,45 +156,26 @@ export const authConfig: NextAuthConfig = {
         `Auth redirect triggered with URL: ${url}, baseUrl: ${baseUrl}`
       );
 
-      // Define trusted external domains that are allowed for redirects
+      // Define trusted external domains
       const trustedDomains = [
         "http://localhost:3010",
-        // Add other trusted domains here as needed
+        // Add other trusted domains
       ];
 
-      // Check if the URL is relative (starts with /)
+      // Check if URL is a relative path (starts with /)
       if (url.startsWith("/")) {
         console.log("Redirecting to relative URL:", `${baseUrl}${url}`);
         return `${baseUrl}${url}`;
       }
 
-      // Check if URL is in our trusted domains list
+      // Check if URL is in our trusted domain list
       else if (trustedDomains.some((domain) => url.startsWith(domain))) {
         // For trusted cross-domain callbacks, allow redirection
-        try {
-          // Generate a secure authorization code
-          const authCode = generateAuthCode();
-
-          // Store the code with the user ID and original redirect URI
-          storeAuthorizationCode(authCode, url, userId);
-
-          // Create the final redirect URL with the code
-          const redirectUrl = new URL(url);
-          redirectUrl.searchParams.set("code", authCode);
-
-          console.log(
-            "Redirecting to trusted external domain with code:",
-            redirectUrl.toString()
-          );
-
-          return redirectUrl.toString();
-        } catch (error) {
-          console.error("Error in redirect callback:", error);
-          return baseUrl; // Fallback to home page on error
-        }
+        console.log("Redirecting to trusted external domain:", url);
+        return url;
       }
 
-      // Default to base URL for all other cases
+      // Default return baseUrl (for all other cases)
       console.log("Redirecting to default baseUrl:", baseUrl);
       return baseUrl;
     },

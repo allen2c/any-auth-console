@@ -1,12 +1,12 @@
-// In app/api/auth/token/route.ts of AnyAuth
+// app/api/auth/token/route.ts
 
 import { NextRequest, NextResponse } from "next/server";
-import { authorizationCodes } from "@/app/auth";
+import { authorizationCodes } from "@/app/utils/auth";
 import { createJwtToken } from "@/app/utils/jwt";
 
 export async function POST(request: NextRequest) {
   try {
-    // Get code from request body
+    // Get authorization code from request body
     const body = await request.json();
     const { grant_type, code, redirect_uri } = body;
 
@@ -25,10 +25,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the stored code data
+    // Get stored authorization code data
     const codeData = authorizationCodes.get(code);
 
-    // Validate the code
+    // Validate authorization code
     if (!codeData) {
       return NextResponse.json(
         {
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if code is expired
+    // Check if code has expired
     if (codeData.expiresAt < Date.now()) {
       authorizationCodes.delete(code);
       return NextResponse.json(
@@ -48,14 +48,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate redirect_uri if provided
-    console.log("");
-    console.log("");
-    console.log(
-      `redirect_uri: ${redirect_uri}, codeData.redirectUri: ${codeData.redirectUri}`
-    );
-    console.log("");
-    console.log("");
+    // Validate redirect URI (if provided)
     if (redirect_uri && codeData.redirectUri !== redirect_uri) {
       return NextResponse.json(
         {
@@ -66,25 +59,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if we have a user ID (REQUIRED)
-    if (!codeData.userId) {
-      return NextResponse.json(
-        {
-          error: "server_error",
-          error_description: "User ID is missing",
-        },
-        { status: 500 }
-      );
-    }
-
-    // Delete the code (one-time use)
+    // Delete authorization code (used once)
     authorizationCodes.delete(code);
 
-    // Generate access and refresh tokens
+    // Generate access token and refresh token
     const accessToken = createJwtToken(codeData.userId, 15 * 60); // 15 minutes
     const refreshToken = createJwtToken(codeData.userId, 7 * 24 * 60 * 60); // 7 days
 
-    // Return the tokens
+    // Return tokens
     return NextResponse.json({
       access_token: accessToken,
       refresh_token: refreshToken,

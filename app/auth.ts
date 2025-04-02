@@ -4,9 +4,11 @@ import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
 import { NextAuthConfig } from "next-auth";
 import { fetchJwtToken, refreshJwtToken } from "./services/auth";
+import { decodeJwtToken } from "./utils/jwt";
 
 // Define an interface for the authorization code structure
 interface AuthorizationCode {
+  userId: string;
   redirectUri: string;
   expiresAt: number;
 }
@@ -15,10 +17,15 @@ interface AuthorizationCode {
 export const authorizationCodes: Map<string, AuthorizationCode> = new Map();
 
 // Store an authorization code
-function storeAuthorizationCode(code: string, redirectUri: string) {
+function storeAuthorizationCode(
+  code: string,
+  redirectUri: string,
+  userId: string
+) {
   authorizationCodes.set(code, {
     redirectUri,
-    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes expiration
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes expiration for the code
+    userId,
   });
   console.log(`Stored authorization code for user ${redirectUri}`);
 }
@@ -55,6 +62,12 @@ export const authConfig: NextAuthConfig = {
   callbacks: {
     // Step 1: Handle authorization logic only in signIn
     async signIn({ user, account }) {
+      console.log(
+        `Signing in with user ${JSON.stringify(
+          user
+        )} and account ${JSON.stringify(account)}`
+      );
+
       // Only run this for Google provider
       if (account?.provider === "google" && user.email) {
         try {
@@ -93,28 +106,30 @@ export const authConfig: NextAuthConfig = {
               picture: user.image as string,
               googleId: account.providerAccountId,
             });
+            const decodedPayload = decodeJwtToken(jwtResponse.access_token);
+            const userId = decodedPayload.sub;
+            console.log(`Decoded payload: ${JSON.stringify(decodedPayload)}`);
 
             return {
               ...token,
               accessToken: jwtResponse.access_token,
               refreshToken: jwtResponse.refresh_token,
-              accessTokenExpires: Date.now() + jwtResponse.expires_in * 1000,
-              id: user.id,
+              accessTokenIssuedAt: decodedPayload.iat * 1000,
+              accessTokenExpires: decodedPayload.exp * 1000,
+              id: userId,
             };
           } catch (error) {
             console.error("Error fetching JWT token:", error);
             // Still return token without JWT information
             return {
               ...token,
-              id: user.id,
+              error: "Invalid JWT token",
             };
           }
         }
 
         return {
           ...token,
-          accessToken: account.access_token,
-          id: user.id,
         };
       }
 

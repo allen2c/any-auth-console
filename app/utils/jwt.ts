@@ -2,6 +2,13 @@
 
 import jwt from "jsonwebtoken";
 
+interface TokenPayload {
+  sub: string; // userId
+  iat: number; // issued time in seconds
+  exp: number; // expiration time in seconds
+  nonce?: string; // nonce
+}
+
 /**
  * Creates a JWT token for the given user ID
  */
@@ -43,11 +50,17 @@ export function verifyJwtToken(token: string): unknown {
 }
 
 /**
- * Decodes a JWT token without verification
+ * Decodes a JWT token without verification and returns the payload
  */
-export function decodeJwtToken(token: string): unknown {
+export function decodeJwtToken(token: string): TokenPayload {
   try {
-    return jwt.decode(token);
+    const mightPayload = jwt.decode(token) as TokenPayload | null;
+    if (!mightPayload) {
+      throw new Error("Invalid JWT token");
+    } else {
+      const payload = mightPayload;
+      return payload; // Return the decoded payload
+    }
   } catch (error) {
     console.error("JWT decode failed:", error);
     throw error;
